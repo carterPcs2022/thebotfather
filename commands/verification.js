@@ -13,14 +13,17 @@ const command = {
     .setDescription('Set up or complete server verification.')
     .addSubcommand(sub => sub
       .setName('setup')
-      .setDescription('Post the verification panel in this channel.')
-      .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild))
+      .setDescription('Post the verification panel in this channel.'))
     .addSubcommand(sub => sub
       .setName('check')
       .setDescription('Complete verification.')),
 
   async execute(interaction) {
-    if (interaction.options.getSubcommand() === 'setup') {
+    const subcommand = interaction.options.getSubcommand();
+    if (subcommand === 'setup') {
+      if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
+        return interaction.reply({ content: '❌ You need Manage Server to set up verification.', ephemeral: true });
+      }
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId('verify_member')
