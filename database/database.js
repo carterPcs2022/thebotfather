@@ -80,8 +80,12 @@ async function initDatabase() {
       level_enabled BOOLEAN NOT NULL DEFAULT FALSE,
       suggestion_channel_id TEXT,
       ticket_category_id TEXT,
+      ticket_staff_role_id TEXT,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    ALTER TABLE guild_settings
+      ADD COLUMN IF NOT EXISTS ticket_staff_role_id TEXT;
 
     CREATE INDEX IF NOT EXISTS guild_settings_updated_idx
       ON guild_settings (updated_at);
