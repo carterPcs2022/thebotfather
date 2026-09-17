@@ -26,12 +26,10 @@ function ticketTopic(userId, claimedBy = null) {
 function parseTicketTopic(channel) {
   if (channel?.type !== ChannelType.GuildText || typeof channel.topic !== 'string') return null;
   if (!channel.topic.startsWith(OWNER_PREFIX)) return null;
-
   const parts = channel.topic.slice(OWNER_PREFIX.length).split('|');
   const ownerId = parts[0] || null;
   const claimedPart = parts.find(part => part.startsWith(CLAIM_PREFIX));
   const claimedBy = claimedPart ? claimedPart.slice(CLAIM_PREFIX.length) : null;
-
   return ownerId ? { ownerId, claimedBy } : null;
 }
 
@@ -94,12 +92,10 @@ async function setupTicketPanel(interaction) {
   if (!settings.ticket_category_id) {
     return { ok: false, message: '❌ Configure a ticket category first with `/settings ticket-category`.' };
   }
-
   const category = interaction.guild.channels.cache.get(settings.ticket_category_id);
   if (!category || category.type !== ChannelType.GuildCategory) {
     return { ok: false, message: '❌ The configured ticket category no longer exists.' };
   }
-
   await interaction.reply({
     embeds: [new EmbedBuilder()
       .setTitle('🎫 Support Tickets')
@@ -117,7 +113,6 @@ async function findOpenTicket(guild, userId) {
     return data?.ownerId === userId && !isClosedTicket(channel);
   });
   if (cached) return cached;
-
   try {
     const result = await query(
       "SELECT channel_id FROM tickets WHERE guild_id = $1 AND owner_id = $2 AND status = 'open' ORDER BY created_at DESC LIMIT 1",
@@ -135,13 +130,11 @@ async function openTicket(interaction) {
     await interaction.reply({ content: '❌ Tickets are not configured yet.', ephemeral: true });
     return true;
   }
-
   const existing = await findOpenTicket(interaction.guild, interaction.user.id);
   if (existing) {
     await interaction.reply({ content: `You already have an open ticket: ${existing}`, ephemeral: true });
     return true;
   }
-
   const category = interaction.guild.channels.cache.get(settings.ticket_category_id);
   if (!category || category.type !== ChannelType.GuildCategory) {
     await interaction.reply({ content: '❌ The configured ticket category is missing.', ephemeral: true });
@@ -154,7 +147,6 @@ async function openTicket(interaction) {
     { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
     { id: interaction.client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ReadMessageHistory] },
   ];
-
   if (settings.ticket_staff_role_id) {
     const staffRole = interaction.guild.roles.cache.get(settings.ticket_staff_role_id);
     if (staffRole) {
@@ -201,7 +193,6 @@ async function claimTicket(interaction) {
     await interaction.reply({ content: '❌ You need the configured ticket staff role or Manage Channels to claim tickets.', ephemeral: true });
     return true;
   }
-
   const ticket = parseTicketTopic(interaction.channel);
   await interaction.channel.setTopic(ticketTopic(ticket.ownerId, interaction.user.id)).catch(() => null);
   await markClaimed(interaction.channel.id, interaction.user.id).catch(error => console.error('[Tickets] Failed to persist claim:', error));
@@ -215,7 +206,6 @@ async function closeTicket(interaction) {
     await interaction.reply({ content: 'ℹ️ This ticket is already closed.', ephemeral: true });
     return true;
   }
-
   const settings = await getSettings(interaction.guildId);
   const ownerId = ownerIdFromChannel(interaction.channel);
   const canClose = interaction.user.id === ownerId || staffCanManage(interaction, settings);
@@ -223,14 +213,10 @@ async function closeTicket(interaction) {
     await interaction.reply({ content: '❌ Only the ticket owner or configured staff can close this ticket.', ephemeral: true });
     return true;
   }
-
   await interaction.channel.permissionOverwrites.edit(ownerId, { SendMessages: false }).catch(() => null);
   await interaction.channel.setName(`closed-${interaction.channel.name.replace(/^ticket-/, '').slice(0, 93)}`).catch(() => null);
   await markClosed(interaction.channel.id).catch(error => console.error('[Tickets] Failed to persist close:', error));
-  await interaction.reply({
-    content: '🔒 Ticket closed. Staff can reopen it or delete it when finished.',
-    components: [closedControlRow()],
-  });
+  await interaction.reply({ content: '🔒 Ticket closed. Staff can reopen it or delete it when finished.', components: [closedControlRow()] });
   return true;
 }
 
@@ -241,22 +227,17 @@ async function reopenTicket(interaction) {
     await interaction.reply({ content: '❌ You need the configured ticket staff role or Manage Channels to reopen tickets.', ephemeral: true });
     return true;
   }
-
   const ownerId = ownerIdFromChannel(interaction.channel);
   await interaction.channel.permissionOverwrites.edit(ownerId, { SendMessages: true }).catch(() => null);
   await interaction.channel.setName(`ticket-${interaction.channel.name.replace(/^closed-/, '').slice(0, 93)}`).catch(() => null);
   await markReopened(interaction.channel.id).catch(error => console.error('[Tickets] Failed to persist reopen:', error));
-  await interaction.reply({
-    content: '🔓 Ticket reopened.',
-    components: [openControlRow()],
-  });
+  await interaction.reply({ content: '🔓 Ticket reopened.', components: [openControlRow()] });
   return true;
 }
 
 async function buildTranscript(channel) {
   const messages = [];
   let before;
-
   while (messages.length < MAX_TRANSCRIPT_MESSAGES) {
     const batch = await channel.messages.fetch({ limit: 100, ...(before ? { before } : {}) });
     if (!batch.size) break;
@@ -264,7 +245,6 @@ async function buildTranscript(channel) {
     before = batch.last().id;
     if (batch.size < 100) break;
   }
-
   messages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
   const lines = [
     `Ticket transcript: #${channel.name}`,
@@ -272,13 +252,11 @@ async function buildTranscript(channel) {
     `Generated: ${new Date().toISOString()}`,
     '',
   ];
-
   for (const message of messages) {
     const content = message.content?.replace(/\r?\n/g, '\\n') || '[no text content]';
     const attachments = [...message.attachments.values()].map(file => file.url).join(' ');
     lines.push(`[${new Date(message.createdTimestamp).toISOString()}] ${message.author?.tag || message.author?.id || 'unknown'}: ${content}${attachments ? ` | Attachments: ${attachments}` : ''}`);
   }
-
   return lines.join('\n');
 }
 
@@ -305,12 +283,18 @@ async function deleteTicket(interaction) {
     await interaction.reply({ content: '❌ You need the configured ticket staff role or Manage Channels to delete tickets.', ephemeral: true });
     return true;
   }
-
   await sendTranscript(interaction.channel, interaction);
   await interaction.reply({ content: '🗑️ Transcript saved when a log channel is configured. Deleting ticket…' });
   await query('DELETE FROM tickets WHERE channel_id = $1', [interaction.channel.id]).catch(error => console.error('[Tickets] Failed to remove ticket record:', error));
   setTimeout(() => interaction.channel.delete('Ticket deleted').catch(() => null), 750);
   return true;
+}
+
+async function executeTicketAction(interaction, action) {
+  if (action === 'close') return closeTicket(interaction);
+  if (action === 'reopen') return reopenTicket(interaction);
+  if (action === 'delete') return deleteTicket(interaction);
+  return false;
 }
 
 async function handleTicketButton(interaction) {
@@ -323,4 +307,9 @@ async function handleTicketButton(interaction) {
   return false;
 }
 
-module.exports = { setupTicketPanel, handleTicketButton, isTicketChannel };
+module.exports = {
+  setupTicketPanel,
+  handleTicketButton,
+  executeTicketAction,
+  isTicketChannel,
+};
