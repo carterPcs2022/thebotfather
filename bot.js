@@ -15,6 +15,8 @@ const utility = require('./commands/utility');
 const { command: giveaway, handleGiveawayButton, restoreGiveaways } = require('./commands/giveaways');
 const { command: settings } = require('./commands/config');
 const { command: verification, handleVerificationButton } = require('./commands/verification');
+const { command: ticket } = require('./commands/tickets');
+const { handleTicketButton } = require('./services/tickets');
 const { handleMessage } = require('./services/automod');
 const { handleMemberJoin, handleMemberLeave } = require('./services/server-automation');
 
@@ -29,7 +31,7 @@ const client = new Client({
 });
 
 client.commands = new Collection();
-const commandModules = [...moderation, ...advancedModeration, ...utility, giveaway, settings, verification];
+const commandModules = [...moderation, ...advancedModeration, ...utility, giveaway, settings, verification, ticket];
 for (const command of commandModules) client.commands.set(command.data.name, command);
 
 const rest = new REST({ version: '10' }).setToken(TOKEN);
@@ -55,6 +57,7 @@ client.on('interactionCreate', async interaction => {
   try {
     if (interaction.isButton()) {
       if (await handleVerificationButton(interaction)) return;
+      if (await handleTicketButton(interaction)) return;
       await handleGiveawayButton(interaction);
       return;
     }
