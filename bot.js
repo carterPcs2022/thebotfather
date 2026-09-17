@@ -10,6 +10,7 @@ const {
 } = require('discord.js');
 const { initDatabase, closeDatabase } = require('./database/database');
 const moderation = require('./commands/moderation');
+const advancedModeration = require('./commands/advanced-moderation');
 const utility = require('./commands/utility');
 const { command: giveaway, handleGiveawayButton, restoreGiveaways } = require('./commands/giveaways');
 const { command: settings } = require('./commands/config');
@@ -32,7 +33,7 @@ const client = new Client({
 });
 
 client.commands = new Collection();
-const commandModules = [...moderation, ...utility, giveaway, settings];
+const commandModules = [...moderation, ...advancedModeration, ...utility, giveaway, settings];
 for (const command of commandModules) client.commands.set(command.data.name, command);
 
 const rest = new REST({ version: '10' }).setToken(TOKEN);
@@ -63,7 +64,6 @@ client.on('interactionCreate', async interaction => {
       await handleGiveawayButton(interaction);
       return;
     }
-
     if (!interaction.isChatInputCommand()) return;
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
@@ -77,25 +77,20 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.on('messageCreate', async message => {
-  try {
-    await handleMessage(message);
-  } catch (error) {
-    console.error('[AutoMod] Message handler error:', error);
-  }
+  try { await handleMessage(message); }
+  catch (error) { console.error('[AutoMod] Message handler error:', error); }
 });
 
 client.on('guildMemberAdd', member => {
   const channelId = process.env.LOG_CHANNEL_ID;
   if (!channelId) return;
-  const channel = member.guild.channels.cache.get(channelId);
-  channel?.send(`📥 **${member.user.tag}** joined the server.`).catch(() => null);
+  member.guild.channels.cache.get(channelId)?.send(`📥 **${member.user.tag}** joined the server.`).catch(() => null);
 });
 
 client.on('guildMemberRemove', member => {
   const channelId = process.env.LOG_CHANNEL_ID;
   if (!channelId) return;
-  const channel = member.guild.channels.cache.get(channelId);
-  channel?.send(`📤 **${member.user.tag}** left the server.`).catch(() => null);
+  member.guild.channels.cache.get(channelId)?.send(`📤 **${member.user.tag}** left the server.`).catch(() => null);
 });
 
 const app = express();
@@ -115,7 +110,6 @@ async function shutdown(signal) {
   await closeDatabase().catch(() => null);
   process.exit(0);
 }
-
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
