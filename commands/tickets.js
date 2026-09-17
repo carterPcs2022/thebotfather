@@ -7,8 +7,7 @@ const command = {
     .setDescription('Manage the server ticket system.')
     .addSubcommand(sub => sub
       .setName('setup')
-      .setDescription('Post the ticket panel in this channel.')
-      .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels))
+      .setDescription('Post the ticket panel in this channel.'))
     .addSubcommand(sub => sub
       .setName('close')
       .setDescription('Close the current ticket.'))
@@ -23,6 +22,9 @@ const command = {
     try {
       const subcommand = interaction.options.getSubcommand();
       if (subcommand === 'setup') {
+        if (!interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
+          return interaction.reply({ content: '❌ You need Manage Channels to set up the ticket panel.', ephemeral: true });
+        }
         const result = await setupTicketPanel(interaction);
         if (!result.ok) await interaction.reply({ content: result.message, ephemeral: true });
         return;
