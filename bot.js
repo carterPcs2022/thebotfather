@@ -12,6 +12,7 @@ const { initDatabase, closeDatabase } = require('./database/database');
 const moderation = require('./commands/moderation');
 const utility = require('./commands/utility');
 const { command: giveaway, handleGiveawayButton, restoreGiveaways } = require('./commands/giveaways');
+const { command: settings } = require('./commands/config');
 
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
@@ -30,7 +31,7 @@ const client = new Client({
 });
 
 client.commands = new Collection();
-const commandModules = [...moderation, ...utility, giveaway];
+const commandModules = [...moderation, ...utility, giveaway, settings];
 for (const command of commandModules) client.commands.set(command.data.name, command);
 
 const rest = new REST({ version: '10' }).setToken(TOKEN);
