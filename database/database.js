@@ -102,6 +102,23 @@ async function initDatabase() {
 
     CREATE INDEX IF NOT EXISTS moderation_cases_guild_created_idx
       ON moderation_cases (guild_id, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS tickets (
+      id BIGSERIAL PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      channel_id TEXT NOT NULL UNIQUE,
+      owner_id TEXT NOT NULL,
+      claimed_by TEXT,
+      status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'closed')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      closed_at TIMESTAMPTZ
+    );
+
+    CREATE INDEX IF NOT EXISTS tickets_guild_owner_status_idx
+      ON tickets (guild_id, owner_id, status);
+
+    CREATE INDEX IF NOT EXISTS tickets_guild_status_idx
+      ON tickets (guild_id, status);
   `);
 
   console.log('[DB] Database initialized.');
