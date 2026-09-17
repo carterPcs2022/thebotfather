@@ -13,6 +13,7 @@ const moderation = require('./commands/moderation');
 const utility = require('./commands/utility');
 const { command: giveaway, handleGiveawayButton, restoreGiveaways } = require('./commands/giveaways');
 const { command: settings } = require('./commands/config');
+const { handleMessage } = require('./services/automod');
 
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
@@ -27,7 +28,7 @@ if (!CLIENT_ID) {
 }
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
 });
 
 client.commands = new Collection();
@@ -72,6 +73,14 @@ client.on('interactionCreate', async interaction => {
     const response = { content: '❌ Something went wrong while processing that request.', ephemeral: true };
     if (interaction.replied || interaction.deferred) await interaction.followUp(response).catch(() => null);
     else await interaction.reply(response).catch(() => null);
+  }
+});
+
+client.on('messageCreate', async message => {
+  try {
+    await handleMessage(message);
+  } catch (error) {
+    console.error('[AutoMod] Message handler error:', error);
   }
 });
 
