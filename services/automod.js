@@ -1,6 +1,6 @@
 const { PermissionFlagsBits } = require('discord.js');
 const { query } = require('../database/database');
-const { DEFAULT_SETTINGS, normalizeSettings } = require('../utils/config');
+const { normalizeSettings } = require('../utils/config');
 
 const messageHistory = new Map();
 const duplicateHistory = new Map();
@@ -51,19 +51,26 @@ async function applyAction(message, reason, settings) {
   if (now - last < 3000) return;
   cooldowns.set(key, now);
 
-  await message.delete().catch(() => null);
+  const deleted = await message.delete().then(() => true).catch(() => false);
 
   if (settings.automod_action === 'timeout' && message.member?.moderatable) {
     await message.member.timeout(60_000, `AutoMod: ${reason}`).catch(() => null);
-    await createCase(message.guild.id, message.author.id, message.client.user.id, 'automod-timeout', reason);
+    await createCase(message.guild.id, message.author.id, message.client.user.id, 'automod-timeout', reason, { deleted });
+  } else if (settings.automod_action === 'warn') {
+    await query(
+      `INSERT INTO warnings (guild_id, user_id, moderator_id, reason)
+       VALUES ($1, $2, $3, $4)`,
+      [message.guild.id, message.author.id, message.client.user.id, `AutoMod: ${reason}`],
+    );
+    await createCase(message.guild.id, message.author.id, message.client.user.id, 'automod-warn', reason, { deleted });
   } else {
-    await createCase(message.guild.id, message.author.id, message.client.user.id, 'automod-delete', reason);
+    await createCase(message.guild.id, message.author.id, message.client.user.id, 'automod-delete', reason, { deleted });
   }
 
   const channel = settings.log_channel_id ? message.guild.channels.cache.get(settings.log_channel_id) : null;
   if (channel?.isTextBased()) {
     await channel.send({
-      content: `🛡️ **AutoMod** removed a message from **${message.author.tag}** in ${message.channel}. Reason: ${reason}`,
+      content: `🛡️ **AutoMod** action **${settings.automod_action}** for **${message.author.tag}** in ${message.channel}. Reason: ${reason}`,
     }).catch(() => null);
   }
 }
@@ -133,6 +140,9 @@ setInterval(() => {
   for (const [key, entries] of duplicateHistory) {
     const filtered = entries.filter(item => now - item.time < 60_000);
     if (filtered.length) duplicateHistory.set(key, filtered); else duplicateHistory.delete(key);
+  }
+  for (const [key, timestamp] of cooldowns) {
+    if (now - timestamp > 60_000) cooldowns.delete(key);
   }
 }, 60_000).unref();
 
