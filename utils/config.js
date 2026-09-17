@@ -25,6 +25,7 @@ const DEFAULT_SETTINGS = Object.freeze({
   level_enabled: false,
   suggestion_channel_id: null,
   ticket_category_id: null,
+  ticket_staff_role_id: null,
 });
 
 function normalizeSettings(row) {
