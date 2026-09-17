@@ -31,49 +31,39 @@ async function setSetting(guildId, key, value) {
   return normalizeSettings(result.rows[0]);
 }
 
-function channelMention(id) {
-  return id ? `<#${id}>` : 'Not configured';
-}
+function channelMention(id) { return id ? `<#${id}>` : 'Not configured'; }
 
 const command = {
   data: new SlashCommandBuilder()
     .setName('settings')
     .setDescription('View and configure The Bot Father for this server.')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-    .addSubcommand(sub => sub
-      .setName('view')
-      .setDescription('View the current server configuration.'))
-    .addSubcommand(sub => sub
-      .setName('log-channel')
-      .setDescription('Set the moderation/event log channel.')
+    .addSubcommand(sub => sub.setName('view').setDescription('View the current server configuration.'))
+    .addSubcommand(sub => sub.setName('log-channel').setDescription('Set the moderation/event log channel.')
       .addChannelOption(o => o.setName('channel').setDescription('Log channel.').addChannelTypes(ChannelType.GuildText).setRequired(true)))
-    .addSubcommand(sub => sub
-      .setName('welcome-channel')
-      .setDescription('Set the welcome channel.')
+    .addSubcommand(sub => sub.setName('welcome-channel').setDescription('Set the welcome channel.')
       .addChannelOption(o => o.setName('channel').setDescription('Welcome channel.').addChannelTypes(ChannelType.GuildText).setRequired(true)))
-    .addSubcommand(sub => sub
-      .setName('goodbye-channel')
-      .setDescription('Set the goodbye channel.')
+    .addSubcommand(sub => sub.setName('welcome').setDescription('Enable or disable welcome messages.')
+      .addBooleanOption(o => o.setName('enabled').setDescription('Enable welcome messages.').setRequired(true)))
+    .addSubcommand(sub => sub.setName('welcome-dm').setDescription('Enable or disable welcome DMs.')
+      .addBooleanOption(o => o.setName('enabled').setDescription('Enable welcome DMs.').setRequired(true)))
+    .addSubcommand(sub => sub.setName('goodbye-channel').setDescription('Set the goodbye channel.')
       .addChannelOption(o => o.setName('channel').setDescription('Goodbye channel.').addChannelTypes(ChannelType.GuildText).setRequired(true)))
-    .addSubcommand(sub => sub
-      .setName('autorole')
-      .setDescription('Set the role automatically assigned to new members.')
+    .addSubcommand(sub => sub.setName('goodbye').setDescription('Enable or disable goodbye messages.')
+      .addBooleanOption(o => o.setName('enabled').setDescription('Enable goodbye messages.').setRequired(true)))
+    .addSubcommand(sub => sub.setName('autorole').setDescription('Set the role automatically assigned to new members.')
       .addRoleOption(o => o.setName('role').setDescription('Autorole.').setRequired(true)))
-    .addSubcommand(sub => sub
-      .setName('automod')
-      .setDescription('Enable or disable the future AutoMod system.')
+    .addSubcommand(sub => sub.setName('verification').setDescription('Enable or disable button-based verification.')
+      .addBooleanOption(o => o.setName('enabled').setDescription('Enable verification.').setRequired(true)))
+    .addSubcommand(sub => sub.setName('verification-role').setDescription('Set the role given after verification.')
+      .addRoleOption(o => o.setName('role').setDescription('Verified role.').setRequired(true)))
+    .addSubcommand(sub => sub.setName('automod').setDescription('Enable or disable AutoMod.')
       .addBooleanOption(o => o.setName('enabled').setDescription('Enable AutoMod.').setRequired(true)))
-    .addSubcommand(sub => sub
-      .setName('levels')
-      .setDescription('Enable or disable the future leveling system.')
+    .addSubcommand(sub => sub.setName('levels').setDescription('Enable or disable the leveling system.')
       .addBooleanOption(o => o.setName('enabled').setDescription('Enable leveling.').setRequired(true)))
-    .addSubcommand(sub => sub
-      .setName('suggestions')
-      .setDescription('Set the suggestion channel.')
+    .addSubcommand(sub => sub.setName('suggestions').setDescription('Set the suggestion channel.')
       .addChannelOption(o => o.setName('channel').setDescription('Suggestion channel.').addChannelTypes(ChannelType.GuildText).setRequired(true)))
-    .addSubcommand(sub => sub
-      .setName('ticket-category')
-      .setDescription('Set the category used for tickets.')
+    .addSubcommand(sub => sub.setName('ticket-category').setDescription('Set the category used for tickets.')
       .addChannelOption(o => o.setName('category').setDescription('Ticket category.').addChannelTypes(ChannelType.GuildCategory).setRequired(true))),
 
   async execute(interaction) {
@@ -81,29 +71,30 @@ const command = {
       const subcommand = interaction.options.getSubcommand();
       if (subcommand === 'view') {
         const s = await getSettings(interaction.guildId);
-        return interaction.reply({
-          ephemeral: true,
-          embeds: [{
-            title: '⚙️ The Bot Father — Server Settings',
-            fields: [
-              { name: 'Logging', value: channelMention(s.log_channel_id), inline: true },
-              { name: 'Welcome', value: `${s.welcome_enabled ? 'Enabled' : 'Disabled'}\n${channelMention(s.welcome_channel_id)}`, inline: true },
-              { name: 'Goodbye', value: `${s.goodbye_enabled ? 'Enabled' : 'Disabled'}\n${channelMention(s.goodbye_channel_id)}`, inline: true },
-              { name: 'Autorole', value: s.autorole_id ? `<@&${s.autorole_id}>` : 'Not configured', inline: true },
-              { name: 'AutoMod', value: s.automod_enabled ? 'Enabled' : 'Disabled', inline: true },
-              { name: 'Levels', value: s.level_enabled ? 'Enabled' : 'Disabled', inline: true },
-              { name: 'Suggestions', value: channelMention(s.suggestion_channel_id), inline: true },
-              { name: 'Tickets', value: s.ticket_category_id ? `<#${s.ticket_category_id}>` : 'Not configured', inline: true },
-            ],
-          }],
-        });
+        return interaction.reply({ ephemeral: true, embeds: [{ title: '⚙️ The Bot Father — Server Settings', fields: [
+          { name: 'Logging', value: channelMention(s.log_channel_id), inline: true },
+          { name: 'Welcome', value: `${s.welcome_enabled ? 'Enabled' : 'Disabled'}\n${channelMention(s.welcome_channel_id)}`, inline: true },
+          { name: 'Welcome DM', value: s.welcome_dm_enabled ? 'Enabled' : 'Disabled', inline: true },
+          { name: 'Goodbye', value: `${s.goodbye_enabled ? 'Enabled' : 'Disabled'}\n${channelMention(s.goodbye_channel_id)}`, inline: true },
+          { name: 'Autorole', value: s.autorole_id ? `<@&${s.autorole_id}>` : 'Not configured', inline: true },
+          { name: 'Verification', value: `${s.verification_enabled ? 'Enabled' : 'Disabled'}\n${s.verification_role_id ? `<@&${s.verification_role_id}>` : 'No role'}`, inline: true },
+          { name: 'AutoMod', value: s.automod_enabled ? 'Enabled' : 'Disabled', inline: true },
+          { name: 'Levels', value: s.level_enabled ? 'Enabled' : 'Disabled', inline: true },
+          { name: 'Suggestions', value: channelMention(s.suggestion_channel_id), inline: true },
+          { name: 'Tickets', value: s.ticket_category_id ? `<#${s.ticket_category_id}>` : 'Not configured', inline: true },
+        ] }] });
       }
 
       const mapping = {
         'log-channel': ['log_channel_id', interaction.options.getChannel('channel').id],
         'welcome-channel': ['welcome_channel_id', interaction.options.getChannel('channel').id],
+        'welcome': ['welcome_enabled', interaction.options.getBoolean('enabled')],
+        'welcome-dm': ['welcome_dm_enabled', interaction.options.getBoolean('enabled')],
         'goodbye-channel': ['goodbye_channel_id', interaction.options.getChannel('channel').id],
+        'goodbye': ['goodbye_enabled', interaction.options.getBoolean('enabled')],
         'autorole': ['autorole_id', interaction.options.getRole('role').id],
+        'verification': ['verification_enabled', interaction.options.getBoolean('enabled')],
+        'verification-role': ['verification_role_id', interaction.options.getRole('role').id],
         'automod': ['automod_enabled', interaction.options.getBoolean('enabled')],
         'levels': ['level_enabled', interaction.options.getBoolean('enabled')],
         'suggestions': ['suggestion_channel_id', interaction.options.getChannel('channel').id],
@@ -111,19 +102,8 @@ const command = {
       };
       const [key, value] = mapping[subcommand] || [];
       if (!key) return interaction.reply({ content: '❌ Unknown settings option.', ephemeral: true });
-
       await setSetting(interaction.guildId, key, value);
-      const labels = {
-        log_channel_id: 'log channel',
-        welcome_channel_id: 'welcome channel',
-        goodbye_channel_id: 'goodbye channel',
-        autorole_id: 'autorole',
-        automod_enabled: 'AutoMod',
-        level_enabled: 'levels',
-        suggestion_channel_id: 'suggestion channel',
-        ticket_category_id: 'ticket category',
-      };
-      return interaction.reply({ content: `✅ ${labels[key]} updated.`, ephemeral: true });
+      return interaction.reply({ content: `✅ **${key}** updated.`, ephemeral: true });
     } catch (error) {
       console.error('[Settings]', error);
       return interaction.reply({ content: '❌ Could not save that setting. Make sure PostgreSQL is configured.', ephemeral: true }).catch(() => null);
