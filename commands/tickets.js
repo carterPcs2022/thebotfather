@@ -1,22 +1,37 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const { setupTicketPanel } = require('../services/tickets');
+const { setupTicketPanel, executeTicketAction } = require('../services/tickets');
 
 const command = {
   data: new SlashCommandBuilder()
     .setName('ticket')
     .setDescription('Manage the server ticket system.')
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
     .addSubcommand(sub => sub
       .setName('setup')
-      .setDescription('Post the ticket panel in this channel.')),
+      .setDescription('Post the ticket panel in this channel.')
+      .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels))
+    .addSubcommand(sub => sub
+      .setName('close')
+      .setDescription('Close the current ticket.'))
+    .addSubcommand(sub => sub
+      .setName('reopen')
+      .setDescription('Reopen the current ticket.'))
+    .addSubcommand(sub => sub
+      .setName('delete')
+      .setDescription('Delete the current ticket and save a transcript if configured.')),
 
   async execute(interaction) {
     try {
-      await setupTicketPanel(interaction);
+      const subcommand = interaction.options.getSubcommand();
+      if (subcommand === 'setup') {
+        const result = await setupTicketPanel(interaction);
+        if (!result.ok) await interaction.reply({ content: result.message, ephemeral: true });
+        return;
+      }
+      await executeTicketAction(interaction, subcommand);
     } catch (error) {
       console.error('[Tickets]', error);
       if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({ content: '❌ Could not set up the ticket panel.', ephemeral: true }).catch(() => null);
+        await interaction.reply({ content: '❌ Could not complete that ticket action.', ephemeral: true }).catch(() => null);
       }
     }
   },
