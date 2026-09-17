@@ -61,6 +61,11 @@ function closedControlRow() {
   );
 }
 
+function staffCanManage(interaction, settings) {
+  if (interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)) return true;
+  return Boolean(settings.ticket_staff_role_id && interaction.member.roles?.cache?.has(settings.ticket_staff_role_id));
+}
+
 async function upsertTicket(guildId, channelId, ownerId) {
   await query(`
     INSERT INTO tickets (guild_id, channel_id, owner_id, status)
@@ -98,7 +103,7 @@ async function setupTicketPanel(interaction) {
   await interaction.reply({
     embeds: [new EmbedBuilder()
       .setTitle('🎫 Support Tickets')
-      .setDescription('Need help? Click **Open Ticket** below. Your ticket will be private to you and the server staff.')],
+      .setDescription('Need help? Click **Open Ticket** below. Your ticket will be private to you and the configured ticket staff.')],
     components: [new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('ticket_open').setLabel('Open Ticket').setStyle(ButtonStyle.Success),
     )],
@@ -144,16 +149,28 @@ async function openTicket(interaction) {
   }
 
   const safeName = interaction.user.username.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'user';
+  const permissionOverwrites = [
+    { id: interaction.guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
+    { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+    { id: interaction.client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ReadMessageHistory] },
+  ];
+
+  if (settings.ticket_staff_role_id) {
+    const staffRole = interaction.guild.roles.cache.get(settings.ticket_staff_role_id);
+    if (staffRole) {
+      permissionOverwrites.push({
+        id: staffRole.id,
+        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
+      });
+    }
+  }
+
   const channel = await interaction.guild.channels.create({
     name: `ticket-${safeName}`.slice(0, 100),
     type: ChannelType.GuildText,
     parent: category.id,
     topic: ticketTopic(interaction.user.id),
-    permissionOverwrites: [
-      { id: interaction.guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
-      { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
-      { id: interaction.client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ReadMessageHistory] },
-    ],
+    permissionOverwrites,
   });
 
   try {
@@ -175,12 +192,13 @@ async function openTicket(interaction) {
 
 async function claimTicket(interaction) {
   if (!isTicketChannel(interaction.channel)) return false;
+  const settings = await getSettings(interaction.guildId);
   if (isClosedTicket(interaction.channel)) {
     await interaction.reply({ content: '❌ Reopen the ticket before claiming it.', ephemeral: true });
     return true;
   }
-  if (!interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
-    await interaction.reply({ content: '❌ You need Manage Channels to claim tickets.', ephemeral: true });
+  if (!staffCanManage(interaction, settings)) {
+    await interaction.reply({ content: '❌ You need the configured ticket staff role or Manage Channels to claim tickets.', ephemeral: true });
     return true;
   }
 
@@ -198,10 +216,11 @@ async function closeTicket(interaction) {
     return true;
   }
 
+  const settings = await getSettings(interaction.guildId);
   const ownerId = ownerIdFromChannel(interaction.channel);
-  const canClose = interaction.user.id === ownerId || interaction.member.permissions.has(PermissionFlagsBits.ManageChannels);
+  const canClose = interaction.user.id === ownerId || staffCanManage(interaction, settings);
   if (!canClose) {
-    await interaction.reply({ content: '❌ Only the ticket owner or staff can close this ticket.', ephemeral: true });
+    await interaction.reply({ content: '❌ Only the ticket owner or configured staff can close this ticket.', ephemeral: true });
     return true;
   }
 
@@ -217,8 +236,9 @@ async function closeTicket(interaction) {
 
 async function reopenTicket(interaction) {
   if (!isTicketChannel(interaction.channel)) return false;
-  if (!interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
-    await interaction.reply({ content: '❌ You need Manage Channels to reopen tickets.', ephemeral: true });
+  const settings = await getSettings(interaction.guildId);
+  if (!staffCanManage(interaction, settings)) {
+    await interaction.reply({ content: '❌ You need the configured ticket staff role or Manage Channels to reopen tickets.', ephemeral: true });
     return true;
   }
 
@@ -280,8 +300,9 @@ async function sendTranscript(channel, interaction) {
 
 async function deleteTicket(interaction) {
   if (!isTicketChannel(interaction.channel)) return false;
-  if (!interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
-    await interaction.reply({ content: '❌ You need Manage Channels to delete tickets.', ephemeral: true });
+  const settings = await getSettings(interaction.guildId);
+  if (!staffCanManage(interaction, settings)) {
+    await interaction.reply({ content: '❌ You need the configured ticket staff role or Manage Channels to delete tickets.', ephemeral: true });
     return true;
   }
 
