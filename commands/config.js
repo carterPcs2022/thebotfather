@@ -32,6 +32,7 @@ async function setSetting(guildId, key, value) {
 }
 
 function channelMention(id) { return id ? `<#${id}>` : 'Not configured'; }
+function roleMention(id) { return id ? `<@&${id}>` : 'Not configured'; }
 
 const command = {
   data: new SlashCommandBuilder()
@@ -64,7 +65,9 @@ const command = {
     .addSubcommand(sub => sub.setName('suggestions').setDescription('Set the suggestion channel.')
       .addChannelOption(o => o.setName('channel').setDescription('Suggestion channel.').addChannelTypes(ChannelType.GuildText).setRequired(true)))
     .addSubcommand(sub => sub.setName('ticket-category').setDescription('Set the category used for tickets.')
-      .addChannelOption(o => o.setName('category').setDescription('Ticket category.').addChannelTypes(ChannelType.GuildCategory).setRequired(true))),
+      .addChannelOption(o => o.setName('category').setDescription('Ticket category.').addChannelTypes(ChannelType.GuildCategory).setRequired(true)))
+    .addSubcommand(sub => sub.setName('ticket-staff-role').setDescription('Set the role that can access ticket channels.')
+      .addRoleOption(o => o.setName('role').setDescription('Ticket staff role.').setRequired(true))),
 
   async execute(interaction) {
     try {
@@ -77,11 +80,11 @@ const command = {
           { name: 'Welcome DM', value: s.welcome_dm_enabled ? 'Enabled' : 'Disabled', inline: true },
           { name: 'Goodbye', value: `${s.goodbye_enabled ? 'Enabled' : 'Disabled'}\n${channelMention(s.goodbye_channel_id)}`, inline: true },
           { name: 'Autorole', value: s.autorole_id ? `<@&${s.autorole_id}>` : 'Not configured', inline: true },
-          { name: 'Verification', value: `${s.verification_enabled ? 'Enabled' : 'Disabled'}\n${s.verification_role_id ? `<@&${s.verification_role_id}>` : 'No role'}`, inline: true },
+          { name: 'Verification', value: `${s.verification_enabled ? 'Enabled' : 'Disabled'}\n${roleMention(s.verification_role_id)}`, inline: true },
           { name: 'AutoMod', value: s.automod_enabled ? 'Enabled' : 'Disabled', inline: true },
           { name: 'Levels', value: s.level_enabled ? 'Enabled' : 'Disabled', inline: true },
           { name: 'Suggestions', value: channelMention(s.suggestion_channel_id), inline: true },
-          { name: 'Tickets', value: s.ticket_category_id ? `<#${s.ticket_category_id}>` : 'Not configured', inline: true },
+          { name: 'Tickets', value: `${s.ticket_category_id ? `<#${s.ticket_category_id}>` : 'No category'}\nStaff: ${roleMention(s.ticket_staff_role_id)}`, inline: true },
         ] }] });
       }
 
@@ -99,6 +102,7 @@ const command = {
         'levels': ['level_enabled', interaction.options.getBoolean('enabled')],
         'suggestions': ['suggestion_channel_id', interaction.options.getChannel('channel').id],
         'ticket-category': ['ticket_category_id', interaction.options.getChannel('category').id],
+        'ticket-staff-role': ['ticket_staff_role_id', interaction.options.getRole('role').id],
       };
       const [key, value] = mapping[subcommand] || [];
       if (!key) return interaction.reply({ content: '❌ Unknown settings option.', ephemeral: true });
