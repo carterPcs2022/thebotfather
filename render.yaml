@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: thebotfather
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: CLIENT_ID
+        sync: false
+      - key: GUILD_ID
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: LOG_CHANNEL_ID
+        sync: false
