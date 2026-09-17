@@ -14,26 +14,22 @@ const advancedModeration = require('./commands/advanced-moderation');
 const utility = require('./commands/utility');
 const { command: giveaway, handleGiveawayButton, restoreGiveaways } = require('./commands/giveaways');
 const { command: settings } = require('./commands/config');
+const { command: verification, handleVerificationButton } = require('./commands/verification');
 const { handleMessage } = require('./services/automod');
+const { handleMemberJoin, handleMemberLeave } = require('./services/server-automation');
 
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 
-if (!TOKEN) {
-  console.error('[Startup] DISCORD_TOKEN is missing.');
-  process.exit(1);
-}
-if (!CLIENT_ID) {
-  console.error('[Startup] CLIENT_ID is missing.');
-  process.exit(1);
-}
+if (!TOKEN) { console.error('[Startup] DISCORD_TOKEN is missing.'); process.exit(1); }
+if (!CLIENT_ID) { console.error('[Startup] CLIENT_ID is missing.'); process.exit(1); }
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
 });
 
 client.commands = new Collection();
-const commandModules = [...moderation, ...advancedModeration, ...utility, giveaway, settings];
+const commandModules = [...moderation, ...advancedModeration, ...utility, giveaway, settings, verification];
 for (const command of commandModules) client.commands.set(command.data.name, command);
 
 const rest = new REST({ version: '10' }).setToken(TOKEN);
@@ -51,16 +47,14 @@ async function registerCommands() {
 
 client.once('ready', async readyClient => {
   console.log(`[Discord] Logged in as ${readyClient.user.tag}`);
-  try {
-    await restoreGiveaways(client);
-  } catch (error) {
-    console.error('[Giveaways] Could not restore giveaways:', error.message);
-  }
+  try { await restoreGiveaways(client); }
+  catch (error) { console.error('[Giveaways] Could not restore giveaways:', error.message); }
 });
 
 client.on('interactionCreate', async interaction => {
   try {
     if (interaction.isButton()) {
+      if (await handleVerificationButton(interaction)) return;
       await handleGiveawayButton(interaction);
       return;
     }
@@ -81,16 +75,16 @@ client.on('messageCreate', async message => {
   catch (error) { console.error('[AutoMod] Message handler error:', error); }
 });
 
-client.on('guildMemberAdd', member => {
+client.on('guildMemberAdd', async member => {
   const channelId = process.env.LOG_CHANNEL_ID;
-  if (!channelId) return;
-  member.guild.channels.cache.get(channelId)?.send(`📥 **${member.user.tag}** joined the server.`).catch(() => null);
+  if (channelId) await member.guild.channels.cache.get(channelId)?.send(`📥 **${member.user.tag}** joined the server.`).catch(() => null);
+  await handleMemberJoin(member);
 });
 
-client.on('guildMemberRemove', member => {
+client.on('guildMemberRemove', async member => {
   const channelId = process.env.LOG_CHANNEL_ID;
-  if (!channelId) return;
-  member.guild.channels.cache.get(channelId)?.send(`📤 **${member.user.tag}** left the server.`).catch(() => null);
+  if (channelId) await member.guild.channels.cache.get(channelId)?.send(`📤 **${member.user.tag}** left the server.`).catch(() => null);
+  await handleMemberLeave(member);
 });
 
 const app = express();
