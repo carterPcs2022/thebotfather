@@ -109,7 +109,7 @@ async function handleMessage(message) {
     }
   }
 
-  if (settings.automod_bad_words_enabled && BAD_WORDS.some(word => new RegExp('(^|\\s)' + word.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '(?=$|\\s)', 'i').test(content))) {
+  if (settings.automod_bad_words_enabled && BAD_WORDS.some(word => new RegExp('(^|\\s)' + word.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\word.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')') + '(?=$|\\s)', 'i').test(content))) {
     return applyAction(message, 'blocked word filter', settings);
   }
 
