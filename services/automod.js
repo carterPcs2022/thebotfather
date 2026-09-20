@@ -109,8 +109,9 @@ async function handleMessage(message) {
     }
   }
 
-  if (settings.automod_bad_words_enabled && BAD_WORDS.some(word => new RegExp('(^|\\s)' + word.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\word.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')') + '(?=$|\\s)', 'i').test(content))) {
-    return applyAction(message, 'blocked word filter', settings);
+  if (settings.automod_bad_words_enabled) {
+    const words = new Set(content.toLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, ' ').split(/\\s+/).filter(Boolean));
+    if (BAD_WORDS.some(word => words.has(word))) return applyAction(message, 'blocked word filter', settings);
   }
 
   if (settings.automod_mention_enabled && message.mentions.users.size + message.mentions.roles.size > settings.automod_max_mentions) {
