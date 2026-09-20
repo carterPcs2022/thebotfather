@@ -118,7 +118,7 @@ async function initDatabase() {
     );
     CREATE INDEX IF NOT EXISTS suggestion_votes_suggestion_idx ON suggestion_votes (suggestion_id);
 
-    CREATE TABLE IF NOT EXISTS user_levels (
+    CREATE TABLE IF NOT EXISTS reputation (\n      guild_id TEXT NOT NULL, user_id TEXT NOT NULL, points INTEGER NOT NULL DEFAULT 0,\n      PRIMARY KEY (guild_id, user_id)\n    );\n\n    CREATE TABLE IF NOT EXISTS reputation_cooldowns (\n      guild_id TEXT NOT NULL, from_user_id TEXT NOT NULL, to_user_id TEXT NOT NULL,\n      last_given_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n      PRIMARY KEY (guild_id, from_user_id, to_user_id)\n    );\n\n    CREATE TABLE IF NOT EXISTS daily_rewards (\n      guild_id TEXT NOT NULL, user_id TEXT NOT NULL, last_claimed_at TIMESTAMPTZ,\n      streak INTEGER NOT NULL DEFAULT 0, total_claims INTEGER NOT NULL DEFAULT 0,\n      PRIMARY KEY (guild_id, user_id)\n    );\n\n    CREATE TABLE IF NOT EXISTS user_levels (
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
       xp BIGINT NOT NULL DEFAULT 0 CHECK (xp >= 0),
