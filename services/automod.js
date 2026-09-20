@@ -9,6 +9,7 @@ const cooldowns = new Map();
 const INVITE_RE = /(discord(?:\.gg|(?:app)?\.com\/invite)\/[^\s]+)/i;
 const URL_RE = /https?:\/\/[^\s]+/i;
 const EMOJI_RE = /(?:\p{Extended_Pictographic}|<a?:\w+:\d+>)/gu;
+const BAD_WORDS = (process.env.AUTOMOD_BAD_WORDS || '').split(',').map(word => word.trim().toLowerCase()).filter(Boolean);
 
 async function getSettings(guildId) {
   const result = await query('SELECT * FROM guild_settings WHERE guild_id = $1', [guildId]);
@@ -106,6 +107,10 @@ async function handleMessage(message) {
       duplicateHistory.delete(key);
       return applyAction(message, 'repeated duplicate messages', settings);
     }
+  }
+
+  if (settings.automod_bad_words_enabled && BAD_WORDS.some(word => new RegExp('(^|\\s)' + word.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\  if (settings.automod_mention_enabled') + '(?=$|\\s)', 'i').test(content))) {
+    return applyAction(message, 'blocked word filter', settings);
   }
 
   if (settings.automod_mention_enabled && message.mentions.users.size + message.mentions.roles.size > settings.automod_max_mentions) {
