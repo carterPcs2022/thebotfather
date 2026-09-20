@@ -18,6 +18,7 @@ const { handleTicketButton } = require('./services/tickets');
 const { handleMessage } = require('./services/automod');
 const { handleMemberJoin, handleMemberLeave } = require('./services/server-automation');
 const { awardMessageXp, startLevelCleanup } = require('./services/levels');
+const { logEvent, logMemberEvent, logMessageEvent } = require('./utils/logging');
 const { command: rank, leaderboardCommand } = require('./commands/levels');
 const { rep, daily, repLeaderboardCommand } = require('./commands/community');
 
@@ -78,18 +79,27 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.on('messageCreate', async message => {
-  try { await handleMessage(message); await awardMessageXp(message); } catch (error) { console.error('[Message] Handler error:', error); }
+  try { await handleMessage(message); } catch (error) { console.error('[AutoMod] Handler error:', error); }
+  try { await awardMessageXp(message); } catch (error) { console.error('[Levels] Handler error:', error); }
+});
+
+client.on('messageDelete', async message => {
+  if (!message.guild || message.author?.bot) return;
+  await logMessageEvent(message, 'Message deleted', 'A message was deleted.');
+});
+
+client.on('messageUpdate', async (oldMessage, newMessage) => {
+  if (!newMessage.guild || newMessage.author?.bot || oldMessage.content === newMessage.content) return;
+  await logMessageEvent(newMessage, 'Message edited', 'A message was edited.');
 });
 
 client.on('guildMemberAdd', async member => {
-  const channelId = process.env.LOG_CHANNEL_ID;
-  if (channelId) await member.guild.channels.cache.get(channelId)?.send(`📥 **${member.user.tag}** joined the server.`).catch(() => null);
+  await logMemberEvent(client, member, 'Member joined', `${member.user.tag} joined the server.`);
   await handleMemberJoin(member);
 });
 
 client.on('guildMemberRemove', async member => {
-  const channelId = process.env.LOG_CHANNEL_ID;
-  if (channelId) await member.guild.channels.cache.get(channelId)?.send(`📤 **${member.user.tag}** left the server.`).catch(() => null);
+  await logMemberEvent(client, member, 'Member left', `${member.user.tag} left the server.`);
   await handleMemberLeave(member);
 });
 
