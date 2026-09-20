@@ -46,8 +46,19 @@ async function initDatabase() {
       ended BOOLEAN NOT NULL DEFAULT FALSE,
       entries JSONB NOT NULL DEFAULT '[]'::jsonb,
       winner_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+      required_role_id TEXT,
+      excluded_role_id TEXT,
+      min_account_age_days INTEGER NOT NULL DEFAULT 0 CHECK (min_account_age_days >= 0),
+      min_server_age_days INTEGER NOT NULL DEFAULT 0 CHECK (min_server_age_days >= 0),
+      bonus_entries INTEGER NOT NULL DEFAULT 0 CHECK (bonus_entries >= 0 AND bonus_entries <= 20),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    ALTER TABLE giveaways ADD COLUMN IF NOT EXISTS required_role_id TEXT;
+    ALTER TABLE giveaways ADD COLUMN IF NOT EXISTS excluded_role_id TEXT;
+    ALTER TABLE giveaways ADD COLUMN IF NOT EXISTS min_account_age_days INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE giveaways ADD COLUMN IF NOT EXISTS min_server_age_days INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE giveaways ADD COLUMN IF NOT EXISTS bonus_entries INTEGER NOT NULL DEFAULT 0;
 
     CREATE INDEX IF NOT EXISTS giveaways_active_idx
       ON giveaways (ended, ends_at);
