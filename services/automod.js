@@ -110,7 +110,7 @@ async function handleMessage(message) {
   }
 
   if (settings.automod_bad_words_enabled) {
-    const words = new Set(content.toLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, ' ').split(/\\s+/).filter(Boolean));
+    const words = new Set(content.toLowerCase().replace(/[^a-z0-9]+/gi, ' ').split(/\s+/).filter(Boolean));
     if (BAD_WORDS.some(word => words.has(word))) return applyAction(message, 'blocked word filter', settings);
   }
 
