@@ -117,6 +117,20 @@ async function initDatabase() {
       PRIMARY KEY (suggestion_id, user_id)
     );
     CREATE INDEX IF NOT EXISTS suggestion_votes_suggestion_idx ON suggestion_votes (suggestion_id);
+
+    CREATE TABLE IF NOT EXISTS user_levels (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      xp BIGINT NOT NULL DEFAULT 0 CHECK (xp >= 0),
+      level INTEGER NOT NULL DEFAULT 0 CHECK (level >= 0),
+      message_count BIGINT NOT NULL DEFAULT 0 CHECK (message_count >= 0),
+      last_xp_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id, user_id)
+    );
+    CREATE INDEX IF NOT EXISTS user_levels_leaderboard_idx ON user_levels (guild_id, xp DESC);
+
   `);
 
   console.log('[DB] Database initialized.');
