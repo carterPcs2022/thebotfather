@@ -1,6 +1,7 @@
 require('dotenv').config();
 
 const express = require('express');
+const { dashboard } = require('./utils/dashboard');
 const {
   Client, Collection, GatewayIntentBits, REST, Routes,
 } = require('discord.js');
@@ -104,6 +105,8 @@ client.on('guildMemberRemove', async member => {
 });
 
 const app = express();
+app.use(express.json({ limit: '32kb' }));
+dashboard(app, client);
 app.disable('x-powered-by');
 app.get('/', (_req, res) => res.json({ name: 'The Bot Father', status: client.isReady() ? 'online' : 'starting' }));
 const healthCheck = (_req, res) => res.status(client.isReady() ? 200 : 503).json({ status: client.isReady() ? 'ok' : 'starting' });
