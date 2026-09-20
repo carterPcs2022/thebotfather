@@ -13,6 +13,7 @@ const { command: settings } = require('./commands/config');
 const { command: verification, handleVerificationButton } = require('./commands/verification');
 const { command: ticket } = require('./commands/tickets');
 const { command: poll, handlePollButton, restorePolls } = require('./commands/polls');
+const { command: suggestion, handleSuggestionButton } = require('./commands/suggestions');
 const { handleTicketButton } = require('./services/tickets');
 const { handleMessage } = require('./services/automod');
 const { handleMemberJoin, handleMemberLeave } = require('./services/server-automation');
@@ -28,7 +29,7 @@ const client = new Client({
 });
 
 client.commands = new Collection();
-const commandModules = [...moderation, ...advancedModeration, ...utility, giveaway, settings, verification, ticket, poll];
+const commandModules = [...moderation, ...advancedModeration, ...utility, giveaway, settings, verification, ticket, poll, suggestion];
 for (const command of commandModules) client.commands.set(command.data.name, command);
 
 const rest = new REST({ version: '10' }).setToken(TOKEN);
@@ -57,6 +58,7 @@ client.on('interactionCreate', async interaction => {
       if (await handleTicketButton(interaction)) return;
       if (await handleGiveawayButton(interaction)) return;
       if (await handlePollButton(interaction)) return;
+      if (await handleSuggestionButton(interaction)) return;
       return;
     }
     if (!interaction.isChatInputCommand()) return;
