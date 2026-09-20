@@ -52,6 +52,7 @@ async function handleSuggestionButton(interaction) {
   const counts = await query('SELECT vote, COUNT(*)::int AS count FROM suggestion_votes WHERE suggestion_id = $1 GROUP BY vote', [id]);
   row.upvotes = counts.rows.find(v => Number(v.vote) === 1)?.count || 0;
   row.downvotes = counts.rows.find(v => Number(v.vote) === -1)?.count || 0;
+  await query('UPDATE suggestions SET upvotes = $1, downvotes = $2 WHERE id = $3', [row.upvotes, row.downvotes, id]);
   await refreshSuggestion(interaction.client, row);
   await interaction.reply({ content: action === 'up' ? '👍 Upvote recorded.' : '👎 Downvote recorded.', ephemeral: true });
   return true;
