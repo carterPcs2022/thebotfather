@@ -91,6 +91,32 @@ async function initDatabase() {
       PRIMARY KEY (poll_id, user_id, option_index)
     );
     CREATE INDEX IF NOT EXISTS poll_votes_poll_idx ON poll_votes (poll_id);
+
+    CREATE TABLE IF NOT EXISTS suggestions (
+      id BIGSERIAL PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      message_id TEXT NOT NULL UNIQUE,
+      author_id TEXT NOT NULL,
+      content TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'denied')),
+      staff_response TEXT,
+      reviewed_by TEXT,
+      reviewed_at TIMESTAMPTZ,
+      upvotes INTEGER NOT NULL DEFAULT 0,
+      downvotes INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS suggestions_guild_status_idx ON suggestions (guild_id, status, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS suggestion_votes (
+      suggestion_id BIGINT NOT NULL REFERENCES suggestions(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL,
+      vote INTEGER NOT NULL CHECK (vote IN (-1, 1)),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (suggestion_id, user_id)
+    );
+    CREATE INDEX IF NOT EXISTS suggestion_votes_suggestion_idx ON suggestion_votes (suggestion_id);
   `);
 
   console.log('[DB] Database initialized.');
