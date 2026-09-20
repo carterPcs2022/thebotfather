@@ -43,7 +43,7 @@ function dashboard(app, client) {
       if (!clientId || !secret) return res.status(503).send(html('Dashboard unavailable','<h1>Dashboard not configured</h1><p>Set <code>DISCORD_CLIENT_SECRET</code> and <code>DASHBOARD_URL</code> on Render.</p>'));
       const state=newToken(); oauthStates.set(state,{created:Date.now()});
       const redirect=`${baseUrl(req)}/dashboard/callback`;
-      return res.redirect('https://discord.com/oauth2/authorize?client_id='+encodeURIComponent(clientId)+'&response_type=code&redirect_uri='+encodeURIComponent(redirect)+'&scope=identify%20guilds');
+      return res.redirect('https://discord.com/oauth2/authorize?client_id='+encodeURIComponent(clientId)+'&response_type=code&redirect_uri='+encodeURIComponent(redirect)+'&scope=identify%20guilds&state='+encodeURIComponent(state));
     }
     try {
       const guilds=await discord('/users/@me/guilds',session.accessToken);
