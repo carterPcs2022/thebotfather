@@ -1,36 +1,40 @@
 require('dotenv').config();
 
 const express = require('express');
+const { dashboard } = require('./utils/dashboard');
 const {
-  Client,
-  Collection,
-  GatewayIntentBits,
-  REST,
-  Routes,
+  Client, Collection, GatewayIntentBits, REST, Routes,
 } = require('discord.js');
 const { initDatabase, closeDatabase } = require('./database/database');
 const moderation = require('./commands/moderation');
+const advancedModeration = require('./commands/advanced-moderation');
 const utility = require('./commands/utility');
 const { command: giveaway, handleGiveawayButton, restoreGiveaways } = require('./commands/giveaways');
+const { command: settings } = require('./commands/config');
+const { command: verification, handleVerificationButton } = require('./commands/verification');
+const { command: ticket } = require('./commands/tickets');
+const { command: poll, handlePollButton, restorePolls } = require('./commands/polls');
+const { command: suggestion, handleSuggestionButton } = require('./commands/suggestions');
+const { handleTicketButton } = require('./services/tickets');
+const { handleMessage } = require('./services/automod');
+const { handleMemberJoin, handleMemberLeave } = require('./services/server-automation');
+const { awardMessageXp, startLevelCleanup } = require('./services/levels');
+const { logEvent, logMemberEvent, logMessageEvent } = require('./utils/logging');
+const { command: rank, leaderboardCommand } = require('./commands/levels');
+const { rep, daily, repLeaderboardCommand } = require('./commands/community');
 
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 
-if (!TOKEN) {
-  console.error('[Startup] DISCORD_TOKEN is missing.');
-  process.exit(1);
-}
-if (!CLIENT_ID) {
-  console.error('[Startup] CLIENT_ID is missing.');
-  process.exit(1);
-}
+if (!TOKEN) { console.error('[Startup] DISCORD_TOKEN is missing.'); process.exit(1); }
+if (!CLIENT_ID) { console.error('[Startup] CLIENT_ID is missing.'); process.exit(1); }
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
 });
 
 client.commands = new Collection();
-const commandModules = [...moderation, ...utility, giveaway];
+const commandModules = [...moderation, ...advancedModeration, ...utility, giveaway, settings, verification, ticket, poll, suggestion, rank, leaderboardCommand, rep, daily, repLeaderboardCommand];
 for (const command of commandModules) client.commands.set(command.data.name, command);
 
 const rest = new REST({ version: '10' }).setToken(TOKEN);
@@ -48,20 +52,21 @@ async function registerCommands() {
 
 client.once('ready', async readyClient => {
   console.log(`[Discord] Logged in as ${readyClient.user.tag}`);
-  try {
-    await restoreGiveaways(client);
-  } catch (error) {
-    console.error('[Giveaways] Could not restore giveaways:', error.message);
-  }
+  startLevelCleanup();
+  try { await restoreGiveaways(client); } catch (error) { console.error('[Giveaways] Could not restore giveaways:', error.message); }
+  try { await restorePolls(client); } catch (error) { console.error('[Polls] Could not restore polls:', error.message); }
 });
 
 client.on('interactionCreate', async interaction => {
   try {
     if (interaction.isButton()) {
-      await handleGiveawayButton(interaction);
+      if (await handleVerificationButton(interaction)) return;
+      if (await handleTicketButton(interaction)) return;
+      if (await handleGiveawayButton(interaction)) return;
+      if (await handlePollButton(interaction)) return;
+      if (await handleSuggestionButton(interaction)) return;
       return;
     }
-
     if (!interaction.isChatInputCommand()) return;
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
@@ -74,21 +79,34 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
-client.on('guildMemberAdd', member => {
-  const channelId = process.env.LOG_CHANNEL_ID;
-  if (!channelId) return;
-  const channel = member.guild.channels.cache.get(channelId);
-  channel?.send(`📥 **${member.user.tag}** joined the server.`).catch(() => null);
+client.on('messageCreate', async message => {
+  try { await handleMessage(message); } catch (error) { console.error('[AutoMod] Handler error:', error); }
+  try { await awardMessageXp(message); } catch (error) { console.error('[Levels] Handler error:', error); }
 });
 
-client.on('guildMemberRemove', member => {
-  const channelId = process.env.LOG_CHANNEL_ID;
-  if (!channelId) return;
-  const channel = member.guild.channels.cache.get(channelId);
-  channel?.send(`📤 **${member.user.tag}** left the server.`).catch(() => null);
+client.on('messageDelete', async message => {
+  if (!message.guild || message.author?.bot) return;
+  await logMessageEvent(message, 'Message deleted', 'A message was deleted.');
+});
+
+client.on('messageUpdate', async (oldMessage, newMessage) => {
+  if (!newMessage.guild || newMessage.author?.bot || oldMessage.content === newMessage.content) return;
+  await logMessageEvent(newMessage, 'Message edited', 'A message was edited.');
+});
+
+client.on('guildMemberAdd', async member => {
+  await logMemberEvent(client, member, 'Member joined', `${member.user.tag} joined the server.`);
+  await handleMemberJoin(member);
+});
+
+client.on('guildMemberRemove', async member => {
+  await logMemberEvent(client, member, 'Member left', `${member.user.tag} left the server.`);
+  await handleMemberLeave(member);
 });
 
 const app = express();
+app.use(express.json({ limit: '32kb' }));
+dashboard(app, client);
 app.disable('x-powered-by');
 app.get('/', (_req, res) => res.json({ name: 'The Bot Father', status: client.isReady() ? 'online' : 'starting' }));
 const healthCheck = (_req, res) => res.status(client.isReady() ? 200 : 503).json({ status: client.isReady() ? 'ok' : 'starting' });
@@ -105,7 +123,6 @@ async function shutdown(signal) {
   await closeDatabase().catch(() => null);
   process.exit(0);
 }
-
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
