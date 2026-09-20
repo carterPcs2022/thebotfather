@@ -17,6 +17,8 @@ const { command: suggestion, handleSuggestionButton } = require('./commands/sugg
 const { handleTicketButton } = require('./services/tickets');
 const { handleMessage } = require('./services/automod');
 const { handleMemberJoin, handleMemberLeave } = require('./services/server-automation');
+const { awardMessageXp, startLevelCleanup } = require('./services/levels');
+const { command: rank, leaderboardCommand } = require('./commands/levels');
 
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
@@ -29,7 +31,7 @@ const client = new Client({
 });
 
 client.commands = new Collection();
-const commandModules = [...moderation, ...advancedModeration, ...utility, giveaway, settings, verification, ticket, poll, suggestion];
+const commandModules = [...moderation, ...advancedModeration, ...utility, giveaway, settings, verification, ticket, poll, suggestion, rank, leaderboardCommand];
 for (const command of commandModules) client.commands.set(command.data.name, command);
 
 const rest = new REST({ version: '10' }).setToken(TOKEN);
@@ -47,6 +49,7 @@ async function registerCommands() {
 
 client.once('ready', async readyClient => {
   console.log(`[Discord] Logged in as ${readyClient.user.tag}`);
+  startLevelCleanup();
   try { await restoreGiveaways(client); } catch (error) { console.error('[Giveaways] Could not restore giveaways:', error.message); }
   try { await restorePolls(client); } catch (error) { console.error('[Polls] Could not restore polls:', error.message); }
 });
@@ -74,7 +77,7 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.on('messageCreate', async message => {
-  try { await handleMessage(message); } catch (error) { console.error('[AutoMod] Message handler error:', error); }
+  try { await handleMessage(message); await awardMessageXp(message); } catch (error) { console.error('[Message] Handler error:', error); }
 });
 
 client.on('guildMemberAdd', async member => {
