@@ -19,6 +19,7 @@ const { handleMessage } = require('./services/automod');
 const { handleMemberJoin, handleMemberLeave } = require('./services/server-automation');
 const { awardMessageXp, startLevelCleanup } = require('./services/levels');
 const { command: rank, leaderboardCommand } = require('./commands/levels');
+const { rep, daily, repLeaderboardCommand } = require('./commands/community');
 
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
@@ -31,7 +32,7 @@ const client = new Client({
 });
 
 client.commands = new Collection();
-const commandModules = [...moderation, ...advancedModeration, ...utility, giveaway, settings, verification, ticket, poll, suggestion, rank, leaderboardCommand];
+const commandModules = [...moderation, ...advancedModeration, ...utility, giveaway, settings, verification, ticket, poll, suggestion, rank, leaderboardCommand, rep, daily, repLeaderboardCommand];
 for (const command of commandModules) client.commands.set(command.data.name, command);
 
 const rest = new REST({ version: '10' }).setToken(TOKEN);
