@@ -1,4 +1,5 @@
 const { query } = require('../database/database');
+const { levelFromXp } = require('./levels');
 
 const REP_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const DAILY_COOLDOWN_MS = 24 * 60 * 60 * 1000;
@@ -38,6 +39,8 @@ async function claimDaily(guildId, userId) {
   const xp = Math.min(200, 50 + (streak - 1) * 10);
   await query('INSERT INTO daily_rewards (guild_id,user_id,last_claimed_at,streak,total_claims) VALUES ($1,$2,NOW(),$3,1) ON CONFLICT (guild_id,user_id) DO UPDATE SET last_claimed_at=NOW(), streak=$3, total_claims=daily_rewards.total_claims+1', [guildId, userId, streak]);
   const levelRow = await query('INSERT INTO user_levels (guild_id,user_id,xp,level,message_count,last_xp_at) VALUES ($1,$2,$3,0,0,NOW()) ON CONFLICT (guild_id,user_id) DO UPDATE SET xp=user_levels.xp+$3, updated_at=NOW(), last_xp_at=NOW() RETURNING *', [guildId, userId, xp]);
+  const newLevel = levelFromXp(Number(levelRow.rows[0].xp));
+  if (newLevel !== Number(levelRow.rows[0].level)) await query('UPDATE user_levels SET level=$1, updated_at=NOW() WHERE guild_id=$2 AND user_id=$3', [newLevel, guildId, userId]);
   return { ok: true, xp, streak, totalClaims: Number(previous?.total_claims || 0) + 1 };
 }
 
