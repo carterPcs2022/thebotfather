@@ -2,11 +2,7 @@ require('dotenv').config();
 
 const express = require('express');
 const {
-  Client,
-  Collection,
-  GatewayIntentBits,
-  REST,
-  Routes,
+  Client, Collection, GatewayIntentBits, REST, Routes,
 } = require('discord.js');
 const { initDatabase, closeDatabase } = require('./database/database');
 const moderation = require('./commands/moderation');
@@ -16,6 +12,7 @@ const { command: giveaway, handleGiveawayButton, restoreGiveaways } = require('.
 const { command: settings } = require('./commands/config');
 const { command: verification, handleVerificationButton } = require('./commands/verification');
 const { command: ticket } = require('./commands/tickets');
+const { command: poll, handlePollButton, restorePolls } = require('./commands/polls');
 const { handleTicketButton } = require('./services/tickets');
 const { handleMessage } = require('./services/automod');
 const { handleMemberJoin, handleMemberLeave } = require('./services/server-automation');
@@ -31,7 +28,7 @@ const client = new Client({
 });
 
 client.commands = new Collection();
-const commandModules = [...moderation, ...advancedModeration, ...utility, giveaway, settings, verification, ticket];
+const commandModules = [...moderation, ...advancedModeration, ...utility, giveaway, settings, verification, ticket, poll];
 for (const command of commandModules) client.commands.set(command.data.name, command);
 
 const rest = new REST({ version: '10' }).setToken(TOKEN);
@@ -49,8 +46,8 @@ async function registerCommands() {
 
 client.once('ready', async readyClient => {
   console.log(`[Discord] Logged in as ${readyClient.user.tag}`);
-  try { await restoreGiveaways(client); }
-  catch (error) { console.error('[Giveaways] Could not restore giveaways:', error.message); }
+  try { await restoreGiveaways(client); } catch (error) { console.error('[Giveaways] Could not restore giveaways:', error.message); }
+  try { await restorePolls(client); } catch (error) { console.error('[Polls] Could not restore polls:', error.message); }
 });
 
 client.on('interactionCreate', async interaction => {
@@ -58,7 +55,8 @@ client.on('interactionCreate', async interaction => {
     if (interaction.isButton()) {
       if (await handleVerificationButton(interaction)) return;
       if (await handleTicketButton(interaction)) return;
-      await handleGiveawayButton(interaction);
+      if (await handleGiveawayButton(interaction)) return;
+      if (await handlePollButton(interaction)) return;
       return;
     }
     if (!interaction.isChatInputCommand()) return;
@@ -74,8 +72,7 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.on('messageCreate', async message => {
-  try { await handleMessage(message); }
-  catch (error) { console.error('[AutoMod] Message handler error:', error); }
+  try { await handleMessage(message); } catch (error) { console.error('[AutoMod] Message handler error:', error); }
 });
 
 client.on('guildMemberAdd', async member => {
