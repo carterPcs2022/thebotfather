@@ -16,15 +16,15 @@ const command = {
     const reason = interaction.options.getString('reason')?.trim() || 'AFK';
 
     await query(
-      \`INSERT INTO afk_status (guild_id, user_id, reason, set_at)
+      `INSERT INTO afk_status (guild_id, user_id, reason, set_at)
        VALUES ($1, $2, $3, NOW())
        ON CONFLICT (guild_id, user_id)
-       DO UPDATE SET reason = EXCLUDED.reason, set_at = NOW()\`,
+       DO UPDATE SET reason = EXCLUDED.reason, set_at = NOW()`,
       [interaction.guildId, interaction.user.id, reason]
     );
 
     await interaction.reply({
-      content: \`💤 \${interaction.user.displayName} is now AFK — \${reason}\`,
+      content: `💤 \${interaction.user.displayName} is now AFK — \${reason}`,
     });
   },
 };
