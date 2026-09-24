@@ -18,10 +18,12 @@ const { command: suggestion, handleSuggestionButton } = require('./commands/sugg
 const { handleTicketButton } = require('./services/tickets');
 const { handleMessage } = require('./services/automod');
 const { handleMemberJoin, handleMemberLeave } = require('./services/server-automation');
+const { handleAfkMessage } = require('./services/afk');
 const { awardMessageXp, startLevelCleanup } = require('./services/levels');
 const { logEvent, logMemberEvent, logMessageEvent } = require('./utils/logging');
 const { command: rank, leaderboardCommand } = require('./commands/levels');
 const { rep, daily, repLeaderboardCommand } = require('./commands/community');
+const { command: afk } = require('./commands/afk');
 
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
@@ -34,7 +36,7 @@ const client = new Client({
 });
 
 client.commands = new Collection();
-const commandModules = [...moderation, ...advancedModeration, ...utility, giveaway, settings, verification, ticket, poll, suggestion, rank, leaderboardCommand, rep, daily, repLeaderboardCommand];
+const commandModules = [...moderation, ...advancedModeration, ...utility, giveaway, settings, verification, ticket, poll, suggestion, rank, leaderboardCommand, rep, daily, repLeaderboardCommand, afk];
 for (const command of commandModules) client.commands.set(command.data.name, command);
 
 const rest = new REST({ version: '10' }).setToken(TOKEN);
@@ -80,6 +82,7 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.on('messageCreate', async message => {
+  try { await handleAfkMessage(message); } catch (error) { console.error('[AFK] Handler error:', error); }
   try { await handleMessage(message); } catch (error) { console.error('[AutoMod] Handler error:', error); }
   try { await awardMessageXp(message); } catch (error) { console.error('[Levels] Handler error:', error); }
 });
