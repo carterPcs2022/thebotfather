@@ -15,7 +15,7 @@ async function handleAfkMessage(message) {
     );
 
     await message.channel.send(
-      \`👋 Welcome back, <@\${message.author.id}>! Your AFK status has been removed.\`
+      `👋 Welcome back, <@\${message.author.id}>! Your AFK status has been removed.`
     );
   }
 
@@ -29,7 +29,7 @@ async function handleAfkMessage(message) {
 
   for (const row of result.rows) {
     await message.channel.send(
-      \`💤 <@\${row.user_id}> is currently AFK — \${row.reason}\`
+      `💤 <@\${row.user_id}> is currently AFK — \${row.reason}`
     );
   }
 }
