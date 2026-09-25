@@ -4,10 +4,10 @@ const commands = [
   { data: new SlashCommandBuilder().setName('ping').setDescription('Check the bot latency.'), async execute(i){ await i.reply('Pong! ' + i.client.ws.ping + 'ms'); } },
   { data: new SlashCommandBuilder().setName('help').setDescription('Show The Bot Father command categories.'), async execute(i){
     const e=new EmbedBuilder().setTitle('The Bot Father').setDescription('Discord server management toolkit.').addFields(
-      {name:'Moderation',value:'`/ban` `/kick` `/timeout` `/untimeout` `/warn` `/warnings` `/clear` `/unban` `/softban` `/purge` `/slowmode` `/lock` `/unlock` `/nick`'},
+      {name:'Moderation',value:'`/ban` `/kick` `/timeout` `/untimeout` `/warn` `/warnings` `/unwarn` `/modlogs` `/clear` `/unban` `/softban` `/purge` `/slowmode` `/lock` `/unlock` `/nick`'},
       {name:'Community',value:'`/rank` `/leaderboard` `/rep` `/repleaderboard` `/daily` `/poll` `/suggestion`'},
       {name:'Server',value:'`/settings` `/verify` `/ticket` `/giveaway`'},
-      {name:'Utility',value:'`/serverinfo` `/userinfo` `/avatar` `/botinfo` `/roleinfo` `/channelinfo` `/membercount` `/servericon` `/serverbanner` `/timestamp`'});
+      {name:'Utility',value:'`/serverinfo` `/userinfo` `/avatar` `/botinfo` `/roleinfo` `/channelinfo` `/membercount` `/servericon` `/serverbanner` `/timestamp` `/embed` `/say` `/afk`'});
     await i.reply({embeds:[e]}); } },
   { data:new SlashCommandBuilder().setName('serverinfo').setDescription('Show information about this server.'), async execute(i){ const g=i.guild; await i.reply({embeds:[new EmbedBuilder().setTitle(g.name).addFields({name:'Members',value:String(g.memberCount),inline:true},{name:'Channels',value:String(g.channels.cache.size),inline:true},{name:'Roles',value:String(g.roles.cache.size),inline:true},{name:'Server ID',value:g.id})]}); } },
   { data:new SlashCommandBuilder().setName('userinfo').setDescription('Show information about a user.').addUserOption(o=>o.setName('user').setDescription('User.')), async execute(i){ const u=i.options.getUser('user')||i.user; const m=await i.guild.members.fetch(u.id).catch(()=>null); await i.reply({embeds:[new EmbedBuilder().setTitle(u.tag).setThumbnail(u.displayAvatarURL({size:256})).addFields({name:'User ID',value:u.id},{name:'Created',value:'<t:'+Math.floor(u.createdTimestamp/1000)+':F>'},{name:'Joined',value:m?.joinedTimestamp?'<t:'+Math.floor(m.joinedTimestamp/1000)+':F>':'Unknown'},{name:'Bot',value:u.bot?'Yes':'No'})]}); } },
