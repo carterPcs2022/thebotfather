@@ -68,6 +68,19 @@ async function initDatabase() {
     ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS ticket_staff_role_id TEXT;
     CREATE INDEX IF NOT EXISTS guild_settings_updated_idx ON guild_settings (updated_at);
 
+    CREATE TABLE IF NOT EXISTS role_panels (
+      id BIGSERIAL PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      message_id TEXT NOT NULL UNIQUE,
+      creator_id TEXT NOT NULL,
+      title TEXT NOT NULL DEFAULT 'Choose your roles',
+      description TEXT NOT NULL DEFAULT 'Select the roles you want.',
+      role_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS role_panels_guild_idx ON role_panels (guild_id);
+
     CREATE TABLE IF NOT EXISTS scheduled_messages (
       id BIGSERIAL PRIMARY KEY,
       guild_id TEXT NOT NULL,
