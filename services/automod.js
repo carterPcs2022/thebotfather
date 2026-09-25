@@ -5,6 +5,8 @@ const { normalizeSettings } = require('../utils/config');
 const messageHistory = new Map();
 const duplicateHistory = new Map();
 const cooldowns = new Map();
+const settingsCache = new Map();
+const SETTINGS_CACHE_MS = 15_000;
 
 const INVITE_RE = /(discord(?:\.gg|(?:app)?\.com\/invite)\/[^\s]+)/i;
 const URL_RE = /https?:\/\/[^\s]+/i;
@@ -12,8 +14,12 @@ const EMOJI_RE = /(?:\p{Extended_Pictographic}|<a?:\w+:\d+>)/gu;
 const BAD_WORDS = (process.env.AUTOMOD_BAD_WORDS || '').split(',').map(word => word.trim().toLowerCase()).filter(Boolean);
 
 async function getSettings(guildId) {
+  const cached = settingsCache.get(guildId);
+  if (cached && Date.now() - cached.time < SETTINGS_CACHE_MS) return cached.settings;
   const result = await query('SELECT * FROM guild_settings WHERE guild_id = $1', [guildId]);
-  return normalizeSettings(result.rows[0]);
+  const settings = normalizeSettings(result.rows[0]);
+  settingsCache.set(guildId, { time: Date.now(), settings });
+  return settings;
 }
 
 function getCapsPercent(content) {
@@ -88,21 +94,22 @@ async function handleMessage(message) {
   if (!settings.automod_enabled) return;
 
   const content = message.content || '';
-  const normalized = content.trim().toLowerCase().replace(/\s+/g, ' ');
+  const normalized = content.trim().toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
   const key = `${message.guild.id}:${message.author.id}`;
   const windowMs = settings.automod_spam_window_seconds * 1000;
 
   if (settings.automod_spam_enabled) {
     const recent = remember(messageHistory, key, { time: Date.now(), channelId: message.channel.id }, windowMs);
-    if (recent.length >= settings.automod_spam_message_limit) {
+    const burstCount = recent.filter(item => item.channelId === message.channel.id).length;
+    if (burstCount >= settings.automod_spam_message_limit) {
       messageHistory.delete(key);
-      return applyAction(message, 'message flooding / spam', settings);
+      return applyAction(message, `message flooding / spam (${burstCount} messages in ${settings.automod_spam_window_seconds}s)`, settings);
     }
   }
 
   if (settings.automod_duplicate_enabled && normalized.length >= 3) {
-    const recent = remember(duplicateHistory, key, { time: Date.now(), content: normalized }, windowMs);
-    const duplicateCount = recent.filter(item => item.content === normalized).length;
+    const recent = remember(duplicateHistory, key, { time: Date.now(), content: normalized, channelId: message.channel.id }, windowMs);
+    const duplicateCount = recent.filter(item => item.content === normalized && item.channelId === message.channel.id).length;
     if (duplicateCount >= 3) {
       duplicateHistory.delete(key);
       return applyAction(message, 'repeated duplicate messages', settings);
@@ -136,6 +143,7 @@ async function handleMessage(message) {
 }
 
 function clearGuild(guildId) {
+  settingsCache.delete(guildId);
   for (const map of [messageHistory, duplicateHistory]) {
     for (const key of map.keys()) if (key.startsWith(`${guildId}:`)) map.delete(key);
   }
@@ -153,6 +161,9 @@ setInterval(() => {
   }
   for (const [key, timestamp] of cooldowns) {
     if (now - timestamp > 60_000) cooldowns.delete(key);
+  }
+  for (const [guildId, entry] of settingsCache) {
+    if (now - entry.time > SETTINGS_CACHE_MS) settingsCache.delete(guildId);
   }
 }, 60_000).unref();
 
