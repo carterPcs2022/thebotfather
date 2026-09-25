@@ -4,7 +4,7 @@ const commands = [
   { data: new SlashCommandBuilder().setName('ping').setDescription('Check the bot latency.'), async execute(i){ await i.reply('Pong! ' + i.client.ws.ping + 'ms'); } },
   { data: new SlashCommandBuilder().setName('help').setDescription('Show The Bot Father command categories.'), async execute(i){
     const e=new EmbedBuilder().setTitle('The Bot Father').setDescription('Discord server management toolkit.').addFields(
-      {name:'Moderation',value:'`/ban` `/kick` `/timeout` `/untimeout` `/warn` `/warnings` `/unwarn` `/modlogs` `/clear` `/unban` `/softban` `/purge` `/slowmode` `/lock` `/unlock` `/nick`'},
+      {name:'Moderation',value:'`/ban` `/kick` `/timeout` `/untimeout` `/warn` `/warnings` `/unwarn` `/modlogs` `/modcase` `/clear` `/unban` `/softban` `/purge` `/slowmode` `/lock` `/unlock` `/nick`'},
       {name:'Community',value:'`/rank` `/leaderboard` `/rep` `/repleaderboard` `/daily` `/poll` `/suggestion`'},
       {name:'Server',value:'`/settings` `/verify` `/ticket` `/giveaway`'},
       {name:'Utility',value:'`/serverinfo` `/userinfo` `/avatar` `/botinfo` `/roleinfo` `/channelinfo` `/membercount` `/servericon` `/serverbanner` `/timestamp` `/embed` `/say` `/afk`'});
