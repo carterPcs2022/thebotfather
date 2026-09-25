@@ -9,6 +9,7 @@ const commands = [
       .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
       .addUserOption(o => o.setName('user').setDescription('Member.').setRequired(true)),
     async execute(interaction) {
+      await interaction.deferReply({ ephemeral: true });
       const user = interaction.options.getUser('user');
       try {
         const result = await query(
@@ -16,18 +17,18 @@ const commands = [
           [interaction.guildId, user.id],
         );
         if (!result.rows.length) {
-          return interaction.reply({ content: `No moderation cases found for **${user.tag}**.`, ephemeral: true });
+          return interaction.editReply({ content: `No moderation cases found for **${user.tag}**.` });
         }
         const description = result.rows.map(row =>
           `**#${row.id} — ${row.action}**\n${row.reason}\nModerator: <@${row.moderator_id}> • <t:${Math.floor(new Date(row.created_at).getTime() / 1000)}:R>`
         ).join('\n\n');
-        return interaction.reply({
+        return interaction.editReply({
           embeds: [new EmbedBuilder().setTitle(`Moderation Logs — ${user.tag}`).setDescription(description).setFooter({ text: 'Showing up to 15 recent cases.' })],
           ephemeral: true,
         });
       } catch (error) {
         console.error('[ModLogs]', error);
-        return interaction.reply({ content: '❌ PostgreSQL is required for moderation logs.', ephemeral: true });
+        return interaction.editReply({ content: '❌ PostgreSQL is required for moderation logs.' });
       }
     },
   },
