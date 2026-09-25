@@ -40,7 +40,7 @@ const command = {
         const description = interaction.options.getString('description') || 'Select the roles you want.';
         const insert = await query('INSERT INTO role_panels (guild_id, channel_id, creator_id, title, description, role_ids) VALUES ($1,$2,$3,$4,$5,$6::jsonb) RETURNING id', [interaction.guildId, channel.id, interaction.user.id, title, description, JSON.stringify(unique.map(role => role.id))]);
         const panelId = insert.rows[0].id;
-        const message = await channel.send({ embeds: [new EmbedBuilder().setTitle(title).setDescription(description)], components: [buildMenu(panelId, unique.map(role => role.id))] });
+        const message = await channel.send({ embeds: [new EmbedBuilder().setTitle(title).setDescription(description)], components: [buildMenu(panelId, unique)] });
         await query('UPDATE role_panels SET message_id = $2 WHERE id = $1', [panelId, message.id]);
         return interaction.editReply('✅ Role panel **#' + panelId + '** created in ' + channel + '.');
       }
