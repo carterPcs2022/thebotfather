@@ -20,6 +20,17 @@ const commands = [
   { data:new SlashCommandBuilder().setName('serverbanner').setDescription('Show the server banner.'), async execute(i){ const u=i.guild.bannerURL({size:1024}); await i.reply(u||'This server has no banner.'); } },
   { data:new SlashCommandBuilder().setName('timestamp').setDescription('Convert a Unix timestamp into Discord timestamp formats.').addIntegerOption(o=>o.setName('unix').setDescription('Unix timestamp in seconds.').setRequired(true)), async execute(i){ const t=i.options.getInteger('unix'); await i.reply('Discord timestamp: `<t:'+t+':F>`\nRelative: `<t:'+t+':R>`'); } },
   { data:new SlashCommandBuilder().setName('embed').setDescription('Create a simple embed.').setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages).addStringOption(o=>o.setName('title').setDescription('Title.').setRequired(true)).addStringOption(o=>o.setName('description').setDescription('Description.').setRequired(true)), async execute(i){ const e=new EmbedBuilder().setTitle(i.options.getString('title')).setDescription(i.options.getString('description')); await i.reply({embeds:[e]}); } },
-  { data:new SlashCommandBuilder().setName('say').setDescription('Send a message as the bot.').setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages).addStringOption(o=>o.setName('message').setDescription('Message.').setMaxLength(2000).setRequired(true)), async execute(i){ await i.reply({content:'✅ Sent.',ephemeral:true}); await i.channel.send(i.options.getString('message')); } },
+  { data:new SlashCommandBuilder().setName('say').setDescription('Send a message as the bot.').setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages).addStringOption(o=>o.setName('message').setDescription('Message.').setMaxLength(2000).setRequired(true)), async execute(i){
+    const message = i.options.getString('message', true);
+    try {
+      await i.channel.send({ content: message, allowedMentions: { parse: [] } });
+      await i.reply({ content: '✅ Sent.', ephemeral: true });
+    } catch (error) {
+      console.error('[Say] Failed to send message:', error);
+      const response = { content: '❌ I could not send that message here. Make sure The Bot Father has **Send Messages** permission in this channel.', ephemeral: true };
+      if (i.replied || i.deferred) await i.followUp(response).catch(() => null);
+      else await i.reply(response).catch(() => null);
+    }
+  } },
 ];
 module.exports = commands;
