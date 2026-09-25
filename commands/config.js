@@ -60,6 +60,23 @@ const command = {
       .addRoleOption(o => o.setName('role').setDescription('Verified role.').setRequired(true)))
     .addSubcommand(sub => sub.setName('automod').setDescription('Enable or disable AutoMod.')
       .addBooleanOption(o => o.setName('enabled').setDescription('Enable AutoMod.').setRequired(true)))
+    .addSubcommand(sub => sub.setName('automod-spam').setDescription('Enable or disable spam detection.')
+      .addBooleanOption(o => o.setName('enabled').setDescription('Enable spam detection.').setRequired(true)))
+    .addSubcommand(sub => sub.setName('automod-duplicates').setDescription('Enable or disable duplicate-message detection.')
+      .addBooleanOption(o => o.setName('enabled').setDescription('Enable duplicate detection.').setRequired(true)))
+    .addSubcommand(sub => sub.setName('automod-mentions').setDescription('Enable or disable mention protection.')
+      .addBooleanOption(o => o.setName('enabled').setDescription('Enable mention protection.').setRequired(true)))
+    .addSubcommand(sub => sub.setName('automod-links').setDescription('Enable or disable link/invite filtering.')
+      .addBooleanOption(o => o.setName('enabled').setDescription('Enable link filtering.').setRequired(true)))
+    .addSubcommand(sub => sub.setName('automod-caps').setDescription('Enable or disable excessive-caps detection.')
+      .addBooleanOption(o => o.setName('enabled').setDescription('Enable caps detection.').setRequired(true)))
+    .addSubcommand(sub => sub.setName('automod-emoji').setDescription('Enable or disable excessive-emoji detection.')
+      .addBooleanOption(o => o.setName('enabled').setDescription('Enable emoji detection.').setRequired(true)))
+    .addSubcommand(sub => sub.setName('automod-bad-words').setDescription('Enable or disable the configured bad-word filter.')
+      .addBooleanOption(o => o.setName('enabled').setDescription('Enable the bad-word filter.').setRequired(true)))
+    .addSubcommand(sub => sub.setName('automod-action').setDescription('Choose what AutoMod does when it detects a violation.')
+      .addStringOption(o => o.setName('action').setDescription('Action to take.').setRequired(true)
+        .addChoices({ name: 'Warn', value: 'warn' }, { name: 'Timeout', value: 'timeout' }, { name: 'Delete', value: 'delete' })))
     .addSubcommand(sub => sub.setName('levels').setDescription('Enable or disable the leveling system.')
       .addBooleanOption(o => o.setName('enabled').setDescription('Enable leveling.').setRequired(true)))
     .addSubcommand(sub => sub.setName('suggestions').setDescription('Set the suggestion channel.')
@@ -99,6 +116,14 @@ const command = {
         'verification': ['verification_enabled', interaction.options.getBoolean('enabled')],
         'verification-role': ['verification_role_id', interaction.options.getRole('role').id],
         'automod': ['automod_enabled', interaction.options.getBoolean('enabled')],
+        'automod-spam': ['automod_spam_enabled', interaction.options.getBoolean('enabled')],
+        'automod-duplicates': ['automod_duplicate_enabled', interaction.options.getBoolean('enabled')],
+        'automod-mentions': ['automod_mention_enabled', interaction.options.getBoolean('enabled')],
+        'automod-links': ['automod_link_enabled', interaction.options.getBoolean('enabled')],
+        'automod-caps': ['automod_caps_enabled', interaction.options.getBoolean('enabled')],
+        'automod-emoji': ['automod_emoji_enabled', interaction.options.getBoolean('enabled')],
+        'automod-bad-words': ['automod_bad_words_enabled', interaction.options.getBoolean('enabled')],
+        'automod-action': ['automod_action', interaction.options.getString('action')],
         'levels': ['level_enabled', interaction.options.getBoolean('enabled')],
         'suggestions': ['suggestion_channel_id', interaction.options.getChannel('channel').id],
         'ticket-category': ['ticket_category_id', interaction.options.getChannel('category').id],
