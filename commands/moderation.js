@@ -2,6 +2,14 @@ const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('disc
 const { query } = require('../database/database');
 const { logEvent } = require('../utils/logging');
 
+async function recordCase(interaction, targetId, action, reason, metadata = {}) {
+  await query(
+    `INSERT INTO moderation_cases (guild_id, target_id, moderator_id, action, reason, metadata)
+     VALUES ($1, $2, $3, $4, $5, $6::jsonb)`,
+    [interaction.guildId, targetId, interaction.user.id, action, reason || 'No reason provided', JSON.stringify(metadata)],
+  ).catch(error => console.error('[Moderation] Case record failed:', error.message));
+}
+
 async function replyError(interaction, message) {
   return interaction.reply({ content: `❌ ${message}`, ephemeral: true });
 }
@@ -28,6 +36,7 @@ const commands = [
       if (error) return replyError(interaction, error);
       const reason = interaction.options.getString('reason') || 'No reason provided';
       await member.ban({ reason });
+      await recordCase(interaction, member.id, 'ban', reason);
       await interaction.reply(`🔨 Banned **${member.user.tag}** — ${reason}`);
       await logEvent(interaction.client, interaction.guild, 'Member banned', `${member.user.tag} was banned.`, [
         { name: 'Moderator', value: interaction.user.tag, inline: true },
@@ -47,6 +56,7 @@ const commands = [
       if (error) return replyError(interaction, error);
       const reason = interaction.options.getString('reason') || 'No reason provided';
       await member.kick(reason);
+      await recordCase(interaction, member.id, 'kick', reason);
       await interaction.reply(`👢 Kicked **${member.user.tag}** — ${reason}`);
       await logEvent(interaction.client, interaction.guild, 'Member kicked', `${member.user.tag} was kicked.`, [
         { name: 'Moderator', value: interaction.user.tag, inline: true },
@@ -68,6 +78,7 @@ const commands = [
       const minutes = interaction.options.getInteger('minutes');
       const reason = interaction.options.getString('reason') || 'No reason provided';
       await member.timeout(minutes * 60 * 1000, reason);
+      await recordCase(interaction, member.id, 'timeout', reason, { minutes });
       await interaction.reply(`⏳ Timed out **${member.user.tag}** for ${minutes} minute(s) — ${reason}`);
       await logEvent(interaction.client, interaction.guild, 'Member timed out', `${member.user.tag} was timed out.`, [
         { name: 'Moderator', value: interaction.user.tag, inline: true },
@@ -85,7 +96,9 @@ const commands = [
       const member = await interaction.guild.members.fetch(interaction.options.getUser('user').id).catch(() => null);
       const error = targetIsProtected(interaction, member);
       if (error) return replyError(interaction, error);
-      await member.timeout(null, `Timeout removed by ${interaction.user.tag}`);
+      const reason = `Timeout removed by ${interaction.user.tag}`;
+      await member.timeout(null, reason);
+      await recordCase(interaction, member.id, 'untimeout', reason);
       await interaction.reply(`✅ Removed timeout from **${member.user.tag}**.`);
     },
   },
@@ -104,12 +117,45 @@ const commands = [
           'INSERT INTO warnings (guild_id, user_id, moderator_id, reason) VALUES ($1, $2, $3, $4) RETURNING id',
           [interaction.guildId, user.id, interaction.user.id, reason],
         );
+        await recordCase(interaction, user.id, 'warn', reason, { warning_id: result.rows[0].id });
         await interaction.reply(`⚠️ Warned **${user.tag}**. Warning #${result.rows[0].id} — ${reason}`);
         await logEvent(interaction.client, interaction.guild, 'Member warned', `${user.tag} received warning #${result.rows[0].id}.`, [
           { name: 'Moderator', value: interaction.user.tag, inline: true },
           { name: 'Reason', value: reason, inline: true },
         ]);
       } catch {
+        return replyError(interaction, 'Warnings need PostgreSQL configured through `DATABASE_URL`.');
+      }
+    },
+  },
+  {
+    data: new SlashCommandBuilder()
+      .setName('unwarn').setDescription('Remove a saved warning from a member.')
+      .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
+      .addUserOption(o => o.setName('user').setDescription('Member.').setRequired(true))
+      .addIntegerOption(o => o.setName('warning_id').setDescription('Warning ID to remove.').setMinValue(1).setRequired(true))
+      .addStringOption(o => o.setName('reason').setDescription('Reason for removing the warning.').setMaxLength(500)),
+    async execute(interaction) {
+      const user = interaction.options.getUser('user');
+      const warningId = interaction.options.getInteger('warning_id');
+      const reason = interaction.options.getString('reason') || 'No reason provided';
+      try {
+        const result = await query(
+          'DELETE FROM warnings WHERE id = $1 AND guild_id = $2 AND user_id = $3 RETURNING id, reason',
+          [warningId, interaction.guildId, user.id],
+        );
+        if (!result.rows.length) return replyError(interaction, 'That warning was not found for this member.');
+        await recordCase(interaction, user.id, 'unwarn', reason, {
+          removed_warning_id: result.rows[0].id,
+          removed_warning_reason: result.rows[0].reason,
+        });
+        await interaction.reply(`✅ Removed warning #${warningId} from **${user.tag}** — ${reason}`);
+        await logEvent(interaction.client, interaction.guild, 'Warning removed', `${user.tag} had warning #${warningId} removed.`, [
+          { name: 'Moderator', value: interaction.user.tag, inline: true },
+          { name: 'Reason', value: reason, inline: true },
+        ]);
+      } catch (error) {
+        console.error('[Unwarn]', error);
         return replyError(interaction, 'Warnings need PostgreSQL configured through `DATABASE_URL`.');
       }
     },
@@ -141,7 +187,8 @@ const commands = [
       .addIntegerOption(o => o.setName('amount').setDescription('Number of messages.').setMinValue(1).setMaxValue(100).setRequired(true)),
     async execute(interaction) {
       const amount = interaction.options.getInteger('amount');
-      const deleted = await interaction.channel.bulkDelete(amount, true);
+      const deleted = const deleted = await interaction.channel.bulkDelete(amount, true);
+      await recordCase(interaction, interaction.user.id, 'clear', `Deleted ${deleted.size} message(s)`, { channel_id: interaction.channel.id, requested_amount: amount });
       await interaction.reply({ content: `🧹 Deleted ${deleted.size} message(s).`, ephemeral: true });
       await logEvent(interaction.client, interaction.guild, 'Messages cleared', `${deleted.size} message(s) deleted in ${interaction.channel}.`, [
         { name: 'Moderator', value: interaction.user.tag, inline: true },
