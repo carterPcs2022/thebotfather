@@ -2,8 +2,8 @@ const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('disc
 const { query } = require('../database/database');
 const { logEvent } = require('../utils/logging');
 
-async function recordCase(interaction, targetId, action, reason, metadata = {}) {
-  await query(
+function recordCase(interaction, targetId, action, reason, metadata = {}) {
+  void query(
     `INSERT INTO moderation_cases (guild_id, target_id, moderator_id, action, reason, metadata)
      VALUES ($1, $2, $3, $4, $5, $6::jsonb)`,
     [interaction.guildId, targetId, interaction.user.id, action, reason || 'No reason provided', JSON.stringify(metadata)],
