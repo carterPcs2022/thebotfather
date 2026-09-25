@@ -124,7 +124,7 @@ const commands = [
           { name: 'Reason', value: reason, inline: true },
         ]);
       } catch {
-        return replyError(interaction, 'Warnings need PostgreSQL configured through `DATABASE_URL`.');
+        return interaction.editReply({ content: '❌ Warnings need PostgreSQL configured through `DATABASE_URL`.' });
       }
     },
   },
@@ -136,6 +136,7 @@ const commands = [
       .addIntegerOption(o => o.setName('warning_id').setDescription('Warning ID to remove.').setMinValue(1).setRequired(true))
       .addStringOption(o => o.setName('reason').setDescription('Reason for removing the warning.').setMaxLength(500)),
     async execute(interaction) {
+      await interaction.deferReply({ ephemeral: true });
       const user = interaction.options.getUser('user');
       const warningId = interaction.options.getInteger('warning_id');
       const reason = interaction.options.getString('reason') || 'No reason provided';
@@ -144,19 +145,19 @@ const commands = [
           'DELETE FROM warnings WHERE id = $1 AND guild_id = $2 AND user_id = $3 RETURNING id, reason',
           [warningId, interaction.guildId, user.id],
         );
-        if (!result.rows.length) return replyError(interaction, 'That warning was not found for this member.');
+        if (!result.rows.length) return interaction.editReply({ content: '❌ That warning was not found for this member.' });
         await recordCase(interaction, user.id, 'unwarn', reason, {
           removed_warning_id: result.rows[0].id,
           removed_warning_reason: result.rows[0].reason,
         });
-        await interaction.reply(`✅ Removed warning #${warningId} from **${user.tag}** — ${reason}`);
+        await interaction.editReply(`✅ Removed warning #${warningId} from **${user.tag}** — ${reason}`);
         await logEvent(interaction.client, interaction.guild, 'Warning removed', `${user.tag} had warning #${warningId} removed.`, [
           { name: 'Moderator', value: interaction.user.tag, inline: true },
           { name: 'Reason', value: reason, inline: true },
         ]);
       } catch (error) {
         console.error('[Unwarn]', error);
-        return replyError(interaction, 'Warnings need PostgreSQL configured through `DATABASE_URL`.');
+        return interaction.editReply({ content: '❌ Warnings need PostgreSQL configured through `DATABASE_URL`.' });
       }
     },
   },
@@ -166,15 +167,16 @@ const commands = [
       .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
       .addUserOption(o => o.setName('user').setDescription('Member.').setRequired(true)),
     async execute(interaction) {
+      await interaction.deferReply({ ephemeral: true });
       const user = interaction.options.getUser('user');
       try {
         const result = await query(
           'SELECT id, moderator_id, reason, created_at FROM warnings WHERE guild_id = $1 AND user_id = $2 ORDER BY created_at DESC LIMIT 20',
           [interaction.guildId, user.id],
         );
-        if (!result.rows.length) return interaction.reply(`No warnings found for **${user.tag}**.`);
+        if (!result.rows.length) return interaction.editReply(`No warnings found for **${user.tag}**.`);
         const description = result.rows.map(w => `**#${w.id}** — ${w.reason}\nModerator: <@${w.moderator_id}> • <t:${Math.floor(new Date(w.created_at).getTime() / 1000)}:R>`).join('\n\n');
-        await interaction.reply({ embeds: [new EmbedBuilder().setTitle(`Warnings — ${user.tag}`).setDescription(description)] });
+        await interaction.editReply({ embeds: [new EmbedBuilder().setTitle(`Warnings — ${user.tag}`).setDescription(description)] });
       } catch {
         return replyError(interaction, 'Warnings need PostgreSQL configured through `DATABASE_URL`.');
       }
@@ -188,7 +190,7 @@ const commands = [
     async execute(interaction) {
       const amount = interaction.options.getInteger('amount');
       const deleted = await interaction.channel.bulkDelete(amount, true);
-      await recordCase(interaction, interaction.user.id, 'clear', `Deleted ${deleted.size} message(s)`, { channel_id: interaction.channel.id, requested_amount: amount });
+      await recordCase(interaction, interaction.channel.id, 'clear', `Deleted ${deleted.size} message(s)`, { channel_id: interaction.channel.id, requested_amount: amount });
       await interaction.reply({ content: `🧹 Deleted ${deleted.size} message(s).`, ephemeral: true });
       await logEvent(interaction.client, interaction.guild, 'Messages cleared', `${deleted.size} message(s) deleted in ${interaction.channel}.`, [
         { name: 'Moderator', value: interaction.user.tag, inline: true },
