@@ -187,7 +187,7 @@ const commands = [
       .addIntegerOption(o => o.setName('amount').setDescription('Number of messages.').setMinValue(1).setMaxValue(100).setRequired(true)),
     async execute(interaction) {
       const amount = interaction.options.getInteger('amount');
-      const deleted = const deleted = await interaction.channel.bulkDelete(amount, true);
+      const deleted = await interaction.channel.bulkDelete(amount, true);
       await recordCase(interaction, interaction.user.id, 'clear', `Deleted ${deleted.size} message(s)`, { channel_id: interaction.channel.id, requested_amount: amount });
       await interaction.reply({ content: `🧹 Deleted ${deleted.size} message(s).`, ephemeral: true });
       await logEvent(interaction.client, interaction.guild, 'Messages cleared', `${deleted.size} message(s) deleted in ${interaction.channel}.`, [
