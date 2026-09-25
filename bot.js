@@ -37,7 +37,7 @@ const client = new Client({
 });
 
 client.commands = new Collection();
-const commandModules = [...moderation, ...advancedModeration, ...utility, giveaway, settings, verification, ticket, poll, suggestion, rank, leaderboardCommand, rep, daily, repLeaderboardCommand, afk];
+const commandModules = [...moderation, ...advancedModeration, ...utility, giveaway, settings, verification, ticket, poll, suggestion, rank, leaderboardCommand, rep, daily, repLeaderboardCommand, afk, ...modtools];
 for (const command of commandModules) client.commands.set(command.data.name, command);
 
 const rest = new REST({ version: '10' }).setToken(TOKEN);
