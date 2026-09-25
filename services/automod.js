@@ -43,12 +43,12 @@ function remember(map, key, value, maxAgeMs) {
   return existing;
 }
 
-async function createCase(guildId, targetId, moderatorId, action, reason, metadata = {}) {
-  await query(
+function createCase(guildId, targetId, moderatorId, action, reason, metadata = {}) {
+  void query(
     `INSERT INTO moderation_cases (guild_id, target_id, moderator_id, action, reason, metadata)
      VALUES ($1, $2, $3, $4, $5, $6::jsonb)`,
     [guildId, targetId, moderatorId, action, reason, JSON.stringify(metadata)],
-  );
+  ).catch(error => console.error('[AutoMod] Case record failed:', error.message));
 }
 
 async function applyAction(message, reason, settings) {
@@ -60,9 +60,19 @@ async function applyAction(message, reason, settings) {
 
   const deleted = await message.delete().then(() => true).catch(() => false);
 
-  if (settings.automod_action === 'timeout' && message.member?.moderatable) {
-    await message.member.timeout(60_000, `AutoMod: ${reason}`).catch(() => null);
-    await createCase(message.guild.id, message.author.id, message.client.user.id, 'automod-timeout', reason, { deleted });
+  if (settings.automod_action === 'timeout') {
+    const timedOut = message.member?.moderatable
+      ? await message.member.timeout(60_000, `AutoMod: ${reason}`).then(() => true).catch(() => false)
+      : false;
+    if (timedOut) {
+      createCase(message.guild.id, message.author.id, message.client.user.id, 'automod-timeout', reason, { deleted, duration_seconds: 60 });
+    } else {
+      createCase(message.guild.id, message.author.id, message.client.user.id, 'automod-delete', reason, {
+        deleted,
+        requested_action: 'timeout',
+        timeout_failed: true,
+      });
+    }
   } else if (settings.automod_action === 'warn') {
     const warningResult = await query(
       `INSERT INTO warnings (guild_id, user_id, moderator_id, reason)
@@ -70,12 +80,12 @@ async function applyAction(message, reason, settings) {
        RETURNING id`,
       [message.guild.id, message.author.id, message.client.user.id, `AutoMod: ${reason}`],
     );
-    await createCase(message.guild.id, message.author.id, message.client.user.id, 'automod-warn', reason, {
+    createCase(message.guild.id, message.author.id, message.client.user.id, 'automod-warn', reason, {
       deleted,
       warning_id: warningResult.rows[0]?.id || null,
     });
   } else {
-    await createCase(message.guild.id, message.author.id, message.client.user.id, 'automod-delete', reason, { deleted });
+    createCase(message.guild.id, message.author.id, message.client.user.id, 'automod-delete', reason, { deleted });
   }
 
   const channel = settings.log_channel_id ? message.guild.channels.cache.get(settings.log_channel_id) : null;
