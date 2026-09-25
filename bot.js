@@ -24,6 +24,7 @@ const { logEvent, logMemberEvent, logMessageEvent } = require('./utils/logging')
 const { command: rank, leaderboardCommand } = require('./commands/levels');
 const { rep, daily, repLeaderboardCommand } = require('./commands/community');
 const { command: afk } = require('./commands/afk');
+const modtools = require('./commands/modtools');
 
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
