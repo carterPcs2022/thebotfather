@@ -114,8 +114,12 @@ async function handleMessage(message) {
     if (BAD_WORDS.some(word => words.has(word))) return applyAction(message, 'blocked word filter', settings);
   }
 
-  if (settings.automod_mention_enabled && message.mentions.users.size + message.mentions.roles.size > settings.automod_max_mentions) {
-    return applyAction(message, `too many mentions (${message.mentions.users.size + message.mentions.roles.size})`, settings);
+  if (settings.automod_mention_enabled) {
+    if (message.mentions.everyone) return applyAction(message, '@everyone/@here mass mention', settings);
+    const mentionCount = message.mentions.users.size + message.mentions.roles.size;
+    if (mentionCount > settings.automod_max_mentions) {
+      return applyAction(message, `too many mentions (${mentionCount})`, settings);
+    }
   }
 
   if (settings.automod_link_enabled && (URL_RE.test(content) || INVITE_RE.test(content))) {
