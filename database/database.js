@@ -68,6 +68,20 @@ async function initDatabase() {
     ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS ticket_staff_role_id TEXT;
     CREATE INDEX IF NOT EXISTS guild_settings_updated_idx ON guild_settings (updated_at);
 
+    CREATE TABLE IF NOT EXISTS scheduled_messages (
+      id BIGSERIAL PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      creator_id TEXT NOT NULL,
+      content TEXT NOT NULL,
+      next_run_at TIMESTAMPTZ NOT NULL,
+      repeat_minutes INTEGER NOT NULL DEFAULT 0 CHECK (repeat_minutes >= 0),
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS scheduled_messages_due_idx ON scheduled_messages (active, next_run_at);
+    CREATE INDEX IF NOT EXISTS scheduled_messages_guild_idx ON scheduled_messages (guild_id, active);
+
     CREATE TABLE IF NOT EXISTS moderation_cases (
       id BIGSERIAL PRIMARY KEY, guild_id TEXT NOT NULL, target_id TEXT NOT NULL,
       moderator_id TEXT NOT NULL, action TEXT NOT NULL, reason TEXT NOT NULL DEFAULT 'No reason provided',
