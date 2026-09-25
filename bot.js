@@ -27,6 +27,7 @@ const { command: afk } = require('./commands/afk');
 const modtools = require('./commands/modtools');
 const { command: schedule } = require('./commands/schedule');
 const { startScheduler } = require('./services/scheduler');
+const { command: rolepanel, handleRolePanel } = require('./commands/rolepanels');
 
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
@@ -39,7 +40,7 @@ const client = new Client({
 });
 
 client.commands = new Collection();
-const commandModules = [...moderation, ...advancedModeration, ...utility, giveaway, settings, verification, ticket, poll, suggestion, rank, leaderboardCommand, rep, daily, repLeaderboardCommand, afk, schedule, ...modtools];
+const commandModules = [...moderation, ...advancedModeration, ...utility, giveaway, settings, verification, ticket, poll, suggestion, rank, leaderboardCommand, rep, daily, repLeaderboardCommand, afk, schedule, rolepanel, ...modtools];
 for (const command of commandModules) client.commands.set(command.data.name, command);
 
 const rest = new REST({ version: '10' }).setToken(TOKEN);
@@ -65,6 +66,9 @@ client.once('ready', async readyClient => {
 
 client.on('interactionCreate', async interaction => {
   try {
+    if (interaction.isStringSelectMenu()) {
+      if (await handleRolePanel(interaction)) return;
+    }
     if (interaction.isButton()) {
       if (await handleVerificationButton(interaction)) return;
       if (await handleTicketButton(interaction)) return;
