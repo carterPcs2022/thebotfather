@@ -64,12 +64,16 @@ async function applyAction(message, reason, settings) {
     await message.member.timeout(60_000, `AutoMod: ${reason}`).catch(() => null);
     await createCase(message.guild.id, message.author.id, message.client.user.id, 'automod-timeout', reason, { deleted });
   } else if (settings.automod_action === 'warn') {
-    await query(
+    const warningResult = await query(
       `INSERT INTO warnings (guild_id, user_id, moderator_id, reason)
-       VALUES ($1, $2, $3, $4)`,
+       VALUES ($1, $2, $3, $4)
+       RETURNING id`,
       [message.guild.id, message.author.id, message.client.user.id, `AutoMod: ${reason}`],
     );
-    await createCase(message.guild.id, message.author.id, message.client.user.id, 'automod-warn', reason, { deleted });
+    await createCase(message.guild.id, message.author.id, message.client.user.id, 'automod-warn', reason, {
+      deleted,
+      warning_id: warningResult.rows[0]?.id || null,
+    });
   } else {
     await createCase(message.guild.id, message.author.id, message.client.user.id, 'automod-delete', reason, { deleted });
   }
