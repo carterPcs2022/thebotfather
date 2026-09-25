@@ -61,6 +61,8 @@ const commands = [
       .addIntegerOption(o => o.setName('amount').setDescription('1-100 messages.').setMinValue(1).setMaxValue(100).setRequired(true)),
     async execute(i) {
       const deleted = await i.channel.bulkDelete(i.options.getInteger('amount'), true);
+      const reason = 'Manual message purge';
+      await record(i, i.channel.id, 'purge', reason, { deleted: deleted.size, requested_amount: i.options.getInteger('amount') });
       await i.reply({ content: `🧹 Deleted ${deleted.size} message(s).`, ephemeral: true });
       await logEvent(i.client, i.guild, 'Messages purged', `${deleted.size} message(s) deleted in ${i.channel}.`, [{ name: 'Moderator', value: i.user.tag }]);
     },
@@ -71,7 +73,9 @@ const commands = [
       .addIntegerOption(o => o.setName('seconds').setDescription('0-21600 seconds.').setMinValue(0).setMaxValue(21600).setRequired(true)),
     async execute(i) {
       const seconds = i.options.getInteger('seconds');
-      await i.channel.setRateLimitPerUser(seconds, `Slowmode changed by ${i.user.tag}`);
+      const reason = `Slowmode set to ${seconds} seconds`;
+      await i.channel.setRateLimitPerUser(seconds, `${reason} by ${i.user.tag}`);
+      await record(i, i.channel.id, 'slowmode', reason, { seconds });
       await i.reply(`🐢 Slowmode set to **${seconds}s**.`);
     },
   },
@@ -79,7 +83,9 @@ const commands = [
     data: new SlashCommandBuilder().setName('lock').setDescription('Lock this channel for @everyone.')
       .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
     async execute(i) {
+      const reason = 'Channel locked';
       await i.channel.permissionOverwrites.edit(i.guild.roles.everyone, { SendMessages: false });
+      await record(i, i.channel.id, 'lock', reason);
       await i.reply(`🔒 ${i.channel} is now locked.`);
     },
   },
@@ -87,7 +93,9 @@ const commands = [
     data: new SlashCommandBuilder().setName('unlock').setDescription('Unlock this channel for @everyone.')
       .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
     async execute(i) {
+      const reason = 'Channel unlocked';
       await i.channel.permissionOverwrites.edit(i.guild.roles.everyone, { SendMessages: null });
+      await record(i, i.channel.id, 'unlock', reason);
       await i.reply(`🔓 ${i.channel} is now unlocked.`);
     },
   },
@@ -100,7 +108,9 @@ const commands = [
       const member = await i.guild.members.fetch(i.options.getUser('user').id).catch(() => null);
       const error = protectedTarget(i, member); if (error) return replyError(i, error);
       const nickname = i.options.getString('nickname') || null;
-      await member.setNickname(nickname, `Changed by ${i.user.tag}`);
+      const reason = nickname ? `Nickname changed to ${nickname}` : 'Nickname cleared';
+      await member.setNickname(nickname, `${reason} by ${i.user.tag}`);
+      await record(i, member.id, 'nick', reason, { nickname });
       await i.reply(`🏷️ Nickname updated for **${member.user.tag}**.`);
     },
   },
