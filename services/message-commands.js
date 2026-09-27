@@ -53,7 +53,7 @@ async function handleMentionCommand(message) {
   if (!message.guild || message.author.bot) return false;
 
   const botId = message.client.user.id;
-  const mentionPattern = new RegExp(`^<@!?\${botId}>\\s*`);
+  const mentionPattern = new RegExp('^<@!?' + botId + '>\\s*');
   if (!mentionPattern.test(message.content)) return false;
 
   const body = message.content.replace(mentionPattern, '').trim();
@@ -212,7 +212,7 @@ async function handleMentionCommand(message) {
       return true;
     }
 
-    await message.reply(`❓ I don't know that command. Try `@Bot help`.`);
+    await message.reply('❓ I don\'t know that command. Try `@Bot help`.');
     return true;
   } catch (error) {
     console.error('[TextCommands]', error);
