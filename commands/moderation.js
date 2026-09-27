@@ -23,16 +23,27 @@ const commands = [
       .addUserOption(o => o.setName('user').setDescription('Member to ban.').setRequired(true))
       .addStringOption(o => o.setName('reason').setDescription('Reason.').setRequired(false)),
     async execute(interaction) {
-      const member = await interaction.guild.members.fetch(interaction.options.getUser('user').id).catch(() => null);
-      const error = targetIsProtected(interaction, member);
-      if (error) return replyError(interaction, error);
-      const reason = interaction.options.getString('reason') || 'No reason provided';
-      await member.ban({ reason });
-      await interaction.reply(`🔨 Banned **${member.user.tag}** — ${reason}`);
-      await logEvent(interaction.client, interaction.guild, 'Member banned', `${member.user.tag} was banned.`, [
-        { name: 'Moderator', value: interaction.user.tag, inline: true },
-        { name: 'Reason', value: reason, inline: true },
-      ]);
+      await interaction.deferReply({ ephemeral: true });
+      try {
+        const member = await interaction.guild.members.fetch(interaction.options.getUser('user').id).catch(() => null);
+        const error = targetIsProtected(interaction, member);
+        if (error) return interaction.editReply(`❌ ${error}`);
+        const reason = interaction.options.getString('reason') || 'No reason provided';
+        await member.ban({ reason });
+        await interaction.editReply(`🔨 Banned **${member.user.tag}** — ${reason}`);
+        void query(
+          `INSERT INTO moderation_cases (guild_id, target_id, moderator_id, action, reason, metadata)
+           VALUES ($1, $2, $3, $4, $5, $6::jsonb)`,
+          [interaction.guildId, member.id, interaction.user.id, 'ban', reason, '{}'],
+        ).catch(error => console.error('[Moderation] Ban audit failed:', error.message));
+        await logEvent(interaction.client, interaction.guild, 'Member banned', `${member.user.tag} was banned.`, [
+          { name: 'Moderator', value: interaction.user.tag, inline: true },
+          { name: 'Reason', value: reason, inline: true },
+        ]);
+      } catch (error) {
+        console.error('[Moderation] Ban failed:', error);
+        await interaction.editReply(`❌ I could not ban that member. Discord said: ${error.message || 'unknown error'}`);
+      }
     },
   },
   {
@@ -42,16 +53,27 @@ const commands = [
       .addUserOption(o => o.setName('user').setDescription('Member to kick.').setRequired(true))
       .addStringOption(o => o.setName('reason').setDescription('Reason.').setRequired(false)),
     async execute(interaction) {
-      const member = await interaction.guild.members.fetch(interaction.options.getUser('user').id).catch(() => null);
-      const error = targetIsProtected(interaction, member);
-      if (error) return replyError(interaction, error);
-      const reason = interaction.options.getString('reason') || 'No reason provided';
-      await member.kick(reason);
-      await interaction.reply(`👢 Kicked **${member.user.tag}** — ${reason}`);
-      await logEvent(interaction.client, interaction.guild, 'Member kicked', `${member.user.tag} was kicked.`, [
-        { name: 'Moderator', value: interaction.user.tag, inline: true },
-        { name: 'Reason', value: reason, inline: true },
-      ]);
+      await interaction.deferReply({ ephemeral: true });
+      try {
+        const member = await interaction.guild.members.fetch(interaction.options.getUser('user').id).catch(() => null);
+        const error = targetIsProtected(interaction, member);
+        if (error) return interaction.editReply(`❌ ${error}`);
+        const reason = interaction.options.getString('reason') || 'No reason provided';
+        await member.kick(reason);
+        await interaction.editReply(`👢 Kicked **${member.user.tag}** — ${reason}`);
+        void query(
+          `INSERT INTO moderation_cases (guild_id, target_id, moderator_id, action, reason, metadata)
+           VALUES ($1, $2, $3, $4, $5, $6::jsonb)`,
+          [interaction.guildId, member.id, interaction.user.id, 'kick', reason, '{}'],
+        ).catch(error => console.error('[Moderation] Kick audit failed:', error.message));
+        await logEvent(interaction.client, interaction.guild, 'Member kicked', `${member.user.tag} was kicked.`, [
+          { name: 'Moderator', value: interaction.user.tag, inline: true },
+          { name: 'Reason', value: reason, inline: true },
+        ]);
+      } catch (error) {
+        console.error('[Moderation] Kick failed:', error);
+        await interaction.editReply(`❌ I could not kick that member. Discord said: ${error.message || 'unknown error'}`);
+      }
     },
   },
   {
