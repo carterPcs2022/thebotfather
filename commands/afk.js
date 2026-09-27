@@ -15,17 +15,25 @@ const command = {
   async execute(interaction) {
     const reason = interaction.options.getString('reason')?.trim() || 'AFK';
 
-    await query(
-      `INSERT INTO afk_status (guild_id, user_id, reason, set_at)
-       VALUES ($1, $2, $3, NOW())
-       ON CONFLICT (guild_id, user_id)
-       DO UPDATE SET reason = EXCLUDED.reason, set_at = NOW()`,
-      [interaction.guildId, interaction.user.id, reason]
-    );
+    try {
+      await query(
+        `INSERT INTO afk_status (guild_id, user_id, reason, set_at)
+         VALUES ($1, $2, $3, NOW())
+         ON CONFLICT (guild_id, user_id)
+         DO UPDATE SET reason = EXCLUDED.reason, set_at = NOW()`,
+        [interaction.guildId, interaction.user.id, reason]
+      );
 
-    await interaction.reply({
-      content: `💤 \${interaction.user.displayName} is now AFK — \${reason}`,
-    });
+      await interaction.reply({
+        content: `💤 ${interaction.user.displayName} is now AFK — ${reason}`,
+      });
+    } catch (error) {
+      console.error('[AFK] Could not save AFK status:', error);
+      await interaction.reply({
+        content: '❌ I could not save your AFK status because the database is unavailable.',
+        ephemeral: true,
+      }).catch(() => null);
+    }
   },
 };
 
