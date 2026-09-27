@@ -43,12 +43,20 @@ const rest = new REST({ version: '10' }).setToken(TOKEN);
 
 async function registerCommands() {
   const payload = commandModules.map(command => command.data.toJSON());
-  if (process.env.GUILD_ID) {
-    await rest.put(Routes.applicationGuildCommands(CLIENT_ID, process.env.GUILD_ID), { body: payload });
-    console.log(`[Commands] Registered ${payload.length} command(s) to development guild.`);
-  } else {
-    await rest.put(Routes.applicationCommands(CLIENT_ID), { body: payload });
-    console.log(`[Commands] Registered ${payload.length} global command(s).`);
+  const route = process.env.GUILD_ID
+    ? Routes.applicationGuildCommands(CLIENT_ID, process.env.GUILD_ID)
+    : Routes.applicationCommands(CLIENT_ID);
+
+  const registration = rest.put(route, { body: payload });
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Discord command registration timed out after 30 seconds.')), 30000)
+  );
+
+  try {
+    await Promise.race([registration, timeout]);
+    console.log(`[Commands] Registered ${payload.length} command(s) ${process.env.GUILD_ID ? 'to development guild' : 'globally'}.`);
+  } catch (error) {
+    console.error('[Commands] Registration failed:', error.message);
   }
 }
 
@@ -57,6 +65,7 @@ client.once('ready', async readyClient => {
   startLevelCleanup();
   try { await restoreGiveaways(client); } catch (error) { console.error('[Giveaways] Could not restore giveaways:', error.message); }
   try { await restorePolls(client); } catch (error) { console.error('[Polls] Could not restore polls:', error.message); }
+  void registerCommands();
 });
 
 client.on('interactionCreate', async interaction => {
@@ -112,7 +121,7 @@ app.use(express.json({ limit: '32kb' }));
 dashboard(app, client);
 app.disable('x-powered-by');
 app.get('/', (_req, res) => res.json({ name: 'The Bot Father', status: client.isReady() ? 'online' : 'starting' }));
-const healthCheck = (_req, res) => res.status(client.isReady() ? 200 : 503).json({ status: client.isReady() ? 'ok' : 'starting' });
+const healthCheck = (_req, res) => res.status(200).json({ status: client.isReady() ? 'ok' : 'starting' });
 app.get('/health', healthCheck);
 app.head('/health', healthCheck);
 
@@ -132,7 +141,6 @@ process.on('SIGINT', () => shutdown('SIGINT'));
 (async () => {
   try {
     await initDatabase();
-    await registerCommands();
     await client.login(TOKEN);
   } catch (error) {
     console.error('[Startup] Fatal error:', error);
