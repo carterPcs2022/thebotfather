@@ -24,6 +24,7 @@ const { logEvent, logMemberEvent, logMessageEvent } = require('./utils/logging')
 const { command: rank, leaderboardCommand } = require('./commands/levels');
 const { rep, daily, repLeaderboardCommand } = require('./commands/community');
 const { command: afk } = require('./commands/afk');
+const { handleMentionCommand } = require('./services/message-commands');
 
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
@@ -91,6 +92,11 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.on('messageCreate', async message => {
+  try {
+    if (await handleMentionCommand(message)) return;
+  } catch (error) {
+    console.error('[TextCommands] Handler error:', error);
+  }
   try { await handleAfkMessage(message); } catch (error) { console.error('[AFK] Handler error:', error); }
   try { await handleMessage(message); } catch (error) { console.error('[AutoMod] Handler error:', error); }
   try { await awardMessageXp(message); } catch (error) { console.error('[Levels] Handler error:', error); }
