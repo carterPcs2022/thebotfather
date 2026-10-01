@@ -69,6 +69,7 @@ const commands = [
         if (role.id === i.guild.id) return '❌ The @everyone role cannot be managed this way.';
         if (role.managed) return '❌ That role is managed by Discord/integration and cannot be changed.';
         if (!role.editable) return '❌ I cannot manage that role. Move it below The Bot Father role.';
+        if (i.member.roles.highest.position <= role.position) return '❌ You can only manage roles below your highest role.';
         return null;
       };
       const validateColor = color => !color || /^#[0-9a-fA-F]{6}$/.test(color);
