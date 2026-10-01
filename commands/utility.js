@@ -32,5 +32,14 @@ const commands = [
       else await i.reply(response).catch(() => null);
     }
   } },
+  { data:new SlashCommandBuilder().setName('role').setDescription('Manage server roles.').setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles).addSubcommand(s=>s.setName('create').setDescription('Create a new server role.').addStringOption(o=>o.setName('name').setDescription('Role name.').setMaxLength(100).setRequired(true)).addStringOption(o=>o.setName('color').setDescription('Hex color, e.g. #5865F2.').setMaxLength(7)).addBooleanOption(o=>o.setName('hoist').setDescription('Display separately in the member list.')).addBooleanOption(o=>o.setName('mentionable').setDescription('Allow members to mention the role.'))), async execute(i){
+    if(!i.memberPermissions?.has(PermissionFlagsBits.ManageRoles)) return i.reply({content:'❌ You need Manage Roles.',ephemeral:true});
+    await i.deferReply({ephemeral:true});
+    const name=i.options.getString('name',true).trim(), color=i.options.getString('color')?.trim(), hoist=i.options.getBoolean('hoist')??false, mentionable=i.options.getBoolean('mentionable')??false;
+    if(color && !/^#[0-9a-fA-F]{6}$/.test(color)) return i.editReply('❌ Color must look like #5865F2.');
+    if(!i.guild.members.me?.permissions.has(PermissionFlagsBits.ManageRoles)) return i.editReply('❌ I need Manage Roles permission.');
+    try { const role=await i.guild.roles.create({name,color:color||undefined,hoist,mentionable,reason:'Created by '+i.user.tag}); await i.editReply('✅ Created '+role.toString()+' — '+name+'.'); }
+    catch(error){ console.error('[Role] Create failed:',error); await i.editReply('❌ I could not create that role. Discord said: '+(error.message||'unknown error')).catch(()=>null); }
+  },
 ];
 module.exports = commands;
