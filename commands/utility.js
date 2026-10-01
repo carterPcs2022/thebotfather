@@ -40,6 +40,6 @@ const commands = [
     if(!i.guild.members.me?.permissions.has(PermissionFlagsBits.ManageRoles)) return i.editReply('❌ I need Manage Roles permission.');
     try { const role=await i.guild.roles.create({name,color:color||undefined,hoist,mentionable,reason:'Created by '+i.user.tag}); await i.editReply('✅ Created '+role.toString()+' — '+name+'.'); }
     catch(error){ console.error('[Role] Create failed:',error); await i.editReply('❌ I could not create that role. Discord said: '+(error.message||'unknown error')).catch(()=>null); }
-  },
+  } },
 ];
 module.exports = commands;
