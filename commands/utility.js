@@ -32,14 +32,107 @@ const commands = [
       else await i.reply(response).catch(() => null);
     }
   } },
-  { data:new SlashCommandBuilder().setName('role').setDescription('Manage server roles.').setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles).addSubcommand(s=>s.setName('create').setDescription('Create a new server role.').addStringOption(o=>o.setName('name').setDescription('Role name.').setMaxLength(100).setRequired(true)).addStringOption(o=>o.setName('color').setDescription('Hex color, e.g. #5865F2.').setMaxLength(7)).addBooleanOption(o=>o.setName('hoist').setDescription('Display separately in the member list.')).addBooleanOption(o=>o.setName('mentionable').setDescription('Allow members to mention the role.'))), async execute(i){
-    if(!i.memberPermissions?.has(PermissionFlagsBits.ManageRoles)) return i.reply({content:'❌ You need Manage Roles.',ephemeral:true});
-    await i.deferReply({ephemeral:true});
-    const name=i.options.getString('name',true).trim(), color=i.options.getString('color')?.trim(), hoist=i.options.getBoolean('hoist')??false, mentionable=i.options.getBoolean('mentionable')??false;
-    if(color && !/^#[0-9a-fA-F]{6}$/.test(color)) return i.editReply('❌ Color must look like #5865F2.');
-    if(!i.guild.members.me?.permissions.has(PermissionFlagsBits.ManageRoles)) return i.editReply('❌ I need Manage Roles permission.');
-    try { const role=await i.guild.roles.create({name,color:color||undefined,hoist,mentionable,reason:'Created by '+i.user.tag}); await i.editReply('✅ Created '+role.toString()+' — '+name+'.'); }
-    catch(error){ console.error('[Role] Create failed:',error); await i.editReply('❌ I could not create that role. Discord said: '+(error.message||'unknown error')).catch(()=>null); }
-  } },
+  {
+    data: new SlashCommandBuilder()
+      .setName('role')
+      .setDescription('Manage server roles.')
+      .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
+      .addSubcommand(s => s.setName('create').setDescription('Create a new server role.')
+        .addStringOption(o => o.setName('name').setDescription('Role name.').setMaxLength(100).setRequired(true))
+        .addStringOption(o => o.setName('color').setDescription('Hex color, e.g. #5865F2.').setMaxLength(7))
+        .addBooleanOption(o => o.setName('hoist').setDescription('Display separately in the member list.'))
+        .addBooleanOption(o => o.setName('mentionable').setDescription('Allow members to mention the role.')))
+      .addSubcommand(s => s.setName('delete').setDescription('Delete a role.')
+        .addRoleOption(o => o.setName('role').setDescription('Role to delete.').setRequired(true)))
+      .addSubcommand(s => s.setName('edit').setDescription('Edit a role.')
+        .addRoleOption(o => o.setName('role').setDescription('Role to edit.').setRequired(true))
+        .addStringOption(o => o.setName('name').setDescription('New role name.').setMaxLength(100))
+        .addStringOption(o => o.setName('color').setDescription('New hex color.').setMaxLength(7))
+        .addBooleanOption(o => o.setName('hoist').setDescription('Display separately in the member list.'))
+        .addBooleanOption(o => o.setName('mentionable').setDescription('Allow members to mention the role.')))
+      .addSubcommand(s => s.setName('add').setDescription('Give a role to a member.')
+        .addUserOption(o => o.setName('user').setDescription('Member.').setRequired(true))
+        .addRoleOption(o => o.setName('role').setDescription('Role to give.').setRequired(true)))
+      .addSubcommand(s => s.setName('remove').setDescription('Remove a role from a member.')
+        .addUserOption(o => o.setName('user').setDescription('Member.').setRequired(true))
+        .addRoleOption(o => o.setName('role').setDescription('Role to remove.').setRequired(true)))
+      .addSubcommand(s => s.setName('list').setDescription('List server roles.')),
+    async execute(i) {
+      if (!i.memberPermissions?.has(PermissionFlagsBits.ManageRoles)) {
+        return i.reply({ content: '❌ You need Manage Roles.', ephemeral: true });
+      }
+      await i.deferReply({ ephemeral: true });
+      const sub = i.options.getSubcommand();
+
+      const rejectRole = role => {
+        if (!role) return '❌ Role not found.';
+        if (role.id === i.guild.id) return '❌ The @everyone role cannot be managed this way.';
+        if (role.managed) return '❌ That role is managed by Discord/integration and cannot be changed.';
+        if (!role.editable) return '❌ I cannot manage that role. Move it below The Bot Father role.';
+        return null;
+      };
+      const validateColor = color => !color || /^#[0-9a-fA-F]{6}$/.test(color);
+
+      try {
+        if (sub === 'create') {
+          const name = i.options.getString('name', true).trim();
+          const color = i.options.getString('color')?.trim();
+          const hoist = i.options.getBoolean('hoist') ?? false;
+          const mentionable = i.options.getBoolean('mentionable') ?? false;
+          if (color && !validateColor(color)) return i.editReply('❌ Color must look like #5865F2.');
+          if (!i.guild.members.me?.permissions.has(PermissionFlagsBits.ManageRoles)) return i.editReply('❌ I need Manage Roles permission.');
+          const role = await i.guild.roles.create({ name, color: color || undefined, hoist, mentionable, reason: 'Created by ' + i.user.tag });
+          return i.editReply('✅ Created ' + role.toString() + ' — ' + name + '.');
+        }
+
+        const role = i.options.getRole('role');
+        const error = rejectRole(role);
+        if (error) return i.editReply(error);
+
+        if (sub === 'delete') {
+          await role.delete('Deleted by ' + i.user.tag);
+          return i.editReply('🗑️ Deleted **' + role.name + '**.');
+        }
+
+        if (sub === 'edit') {
+          const name = i.options.getString('name')?.trim();
+          const color = i.options.getString('color')?.trim();
+          const hoist = i.options.getBoolean('hoist');
+          const mentionable = i.options.getBoolean('mentionable');
+          if (!name && !color && hoist === null && mentionable === null) return i.editReply('❌ Provide at least one property to change.');
+          if (color && !validateColor(color)) return i.editReply('❌ Color must look like #5865F2.');
+          const changes = {};
+          if (name) changes.name = name;
+          if (color) changes.color = color;
+          if (hoist !== null) changes.hoist = hoist;
+          if (mentionable !== null) changes.mentionable = mentionable;
+          await role.edit({ ...changes, reason: 'Edited by ' + i.user.tag });
+          return i.editReply('✅ Updated ' + role.toString() + '.');
+        }
+
+        if (sub === 'add' || sub === 'remove') {
+          const user = i.options.getUser('user', true);
+          const member = await i.guild.members.fetch(user.id).catch(() => null);
+          if (!member) return i.editReply('❌ That user is not in this server.');
+          if (sub === 'add') {
+            await member.roles.add(role, 'Added by ' + i.user.tag);
+            return i.editReply('✅ Added ' + role.toString() + ' to <@' + user.id + '>.');
+          }
+          await member.roles.remove(role, 'Removed by ' + i.user.tag);
+          return i.editReply('✅ Removed ' + role.toString() + ' from <@' + user.id + '>.');
+        }
+
+        const roles = i.guild.roles.cache
+          .filter(r => r.id !== i.guild.id)
+          .sort((a, b) => b.position - a.position)
+          .first(25);
+        if (!roles.length) return i.editReply('No server roles found.');
+        return i.editReply(roles.map(r => r.toString() + ' — `' + r.id + '`').join('\n'));
+      } catch (error) {
+        console.error('[Role] Failed:', error);
+        return i.editReply('❌ Role action failed. Discord said: ' + (error.message || 'unknown error')).catch(() => null);
+      }
+    },
+  },
 ];
 module.exports = commands;
