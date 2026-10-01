@@ -25,6 +25,10 @@ const { command: rank, leaderboardCommand } = require('./commands/levels');
 const { rep, daily, repLeaderboardCommand } = require('./commands/community');
 const { command: afk } = require('./commands/afk');
 const { handleMentionCommand } = require('./services/message-commands');
+const modtools = require('./commands/modtools');
+const { command: schedule } = require('./commands/schedule');
+const { startScheduler } = require('./services/scheduler');
+const { command: rolepanel, handleRolePanel } = require('./commands/rolepanels');
 
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
@@ -37,7 +41,7 @@ const client = new Client({
 });
 
 client.commands = new Collection();
-const commandModules = [...moderation, ...advancedModeration, ...utility, giveaway, settings, verification, ticket, poll, suggestion, rank, leaderboardCommand, rep, daily, repLeaderboardCommand, afk];
+const commandModules = [...moderation, ...advancedModeration, ...utility, giveaway, settings, verification, ticket, poll, suggestion, rank, leaderboardCommand, rep, daily, repLeaderboardCommand, afk, schedule, rolepanel, ...modtools];
 for (const command of commandModules) client.commands.set(command.data.name, command);
 
 const rest = new REST({ version: '10' }).setToken(TOKEN);
@@ -64,6 +68,7 @@ async function registerCommands() {
 client.once('ready', async readyClient => {
   console.log(`[Discord] Logged in as ${readyClient.user.tag}`);
   startLevelCleanup();
+  startScheduler(readyClient);
   try { await restoreGiveaways(client); } catch (error) { console.error('[Giveaways] Could not restore giveaways:', error.message); }
   try { await restorePolls(client); } catch (error) { console.error('[Polls] Could not restore polls:', error.message); }
   void registerCommands();
@@ -71,6 +76,9 @@ client.once('ready', async readyClient => {
 
 client.on('interactionCreate', async interaction => {
   try {
+    if (interaction.isStringSelectMenu()) {
+      if (await handleRolePanel(interaction)) return;
+    }
     if (interaction.isButton()) {
       if (await handleVerificationButton(interaction)) return;
       if (await handleTicketButton(interaction)) return;
