@@ -65,7 +65,7 @@ async function registerCommands() {
   }
 }
 
-client.once('ready', async readyClient => {
+client.once('clientReady', async readyClient => {
   console.log(`[Discord] Logged in as ${readyClient.user.tag}`);
   startLevelCleanup();
   startScheduler(readyClient);
