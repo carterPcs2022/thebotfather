@@ -153,11 +153,25 @@ process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
 (async () => {
+  let databaseReady = false;
+
   try {
     await initDatabase();
+    databaseReady = true;
+    console.log('[Startup] Persistent database is ready.');
+  } catch (error) {
+    console.error('[Startup] Database unavailable; continuing in limited mode:', error.message);
+    console.error('[Startup] Database-backed commands may fail until a working database is configured.');
+    // Keep the Discord connection alive so non-database features remain available
+    // while the database is repaired. Do not delete or overwrite any database data.
+  }
+
+  process.env.BOT_DATABASE_READY = databaseReady ? 'true' : 'false';
+
+  try {
     await client.login(TOKEN);
   } catch (error) {
-    console.error('[Startup] Fatal error:', error);
+    console.error('[Startup] Discord login failed:', error);
     await closeDatabase().catch(() => null);
     process.exit(1);
   }
