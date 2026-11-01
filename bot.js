@@ -32,6 +32,7 @@ const { command: rolepanel, handleRolePanel } = require('./commands/rolepanels')
 
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
+let databaseReady = false;
 
 if (!TOKEN) { console.error('[Startup] DISCORD_TOKEN is missing.'); process.exit(1); }
 if (!CLIENT_ID) { console.error('[Startup] CLIENT_ID is missing.'); process.exit(1); }
@@ -67,10 +68,14 @@ async function registerCommands() {
 
 client.once('clientReady', async readyClient => {
   console.log(`[Discord] Logged in as ${readyClient.user.tag}`);
-  startLevelCleanup();
-  startScheduler(readyClient);
-  try { await restoreGiveaways(client); } catch (error) { console.error('[Giveaways] Could not restore giveaways:', error.message); }
-  try { await restorePolls(client); } catch (error) { console.error('[Polls] Could not restore polls:', error.message); }
+  if (databaseReady) {
+    startLevelCleanup();
+    startScheduler(readyClient);
+    try { await restoreGiveaways(client); } catch (error) { console.error('[Giveaways] Could not restore giveaways:', error.message); }
+    try { await restorePolls(client); } catch (error) { console.error('[Polls] Could not restore polls:', error.message); }
+  } else {
+    console.warn('[Startup] Database-backed background services are paused until the database is restored.');
+  }
   void registerCommands();
 });
 
@@ -153,8 +158,6 @@ process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
 (async () => {
-  let databaseReady = false;
-
   try {
     await initDatabase();
     databaseReady = true;
